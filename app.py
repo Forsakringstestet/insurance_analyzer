@@ -48,3 +48,6 @@ if uploaded_files:
     with col3:
         if st.button("Exportera till Word"):
             export_summary_word(analysis_results)
+with st.expander("🧾 Upphandlingsunderlag"):
+    if st.button("Generera Word-rapport"):
+        generate_procurement_word(analysis_results)

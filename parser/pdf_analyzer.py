@@ -61,11 +61,19 @@ def extract_all_insurance_data(text: str) -> Dict:
     egendom = extract_egendom(text)
     ansvar = extract_ansvar(text)
     tider = extract_karen_ansvarstid(text)
+
+    # Specifika fält för visualisering
+    maskiner = egendom.get("maskiner", 0.0)
+    produktansvar = ansvar.get("produktansvar", 0.0)
+    omfattning = get_omfattning_block(egendom, ansvar)
+
     return {
         "premie": premie,
         "självrisk": sjalvrisk,
+        "maskiner": maskiner,
+        "produktansvar": produktansvar,
         "egendom": egendom,
         "ansvar": ansvar,
-        "omfattning": get_omfattning_block(egendom, ansvar),
+        "omfattning": omfattning,
         **tider
     }

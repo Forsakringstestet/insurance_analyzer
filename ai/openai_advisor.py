@@ -32,3 +32,7 @@ Ge ett konkret förslag: höj/sänk försäkringsbelopp, omförhandla klausuler,
             if attempt == 2:
                 return f\"OpenAI fel: {e}\"
             time.sleep(2)  # vänta innan nytt försök
+try:
+    recommendation = ask_openai(data, industry=industry)
+except Exception as e:
+    recommendation = f\"Kunde ej hämta AI-råd: {e}\"

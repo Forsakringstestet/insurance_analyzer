@@ -1,4 +1,3 @@
-# insurance_analyzer/parser/scoring.py
 def score_document(data, w_scope, w_cost, w_deduct, w_other):
     scope_score = 1 if data["omfattning"] != "Ej hittad" else 0
     cost_score = 1 if data["premie"] != "Ej angiven" else 0

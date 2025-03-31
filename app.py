@@ -38,10 +38,6 @@ for file in uploaded_files:
         data["självrisk"] = float(str(data.get("självrisk", 0)).replace(" ", "").replace(",", "."))
     except:
         data["självrisk"] = 0.0
-    try:
-        data["belopp"] = float(data.get("egendom", {}).get("maskiner", 0))
-    except:
-        data["belopp"] = 0.0
 
     score = score_document(data, weight_scope, weight_cost, weight_deductible, weight_other)
 

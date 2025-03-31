@@ -1,29 +1,37 @@
-from openai import OpenAI
-import streamlit as st
+import openai
+import os
 
-client = OpenAI(api_key=st.secrets["openai"]["api_key"])
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def ask_openai(data, industry: str = "generell"):
-    prompt = f"""
-Du är en AI-specialist inom företagsförsäkringar.
+def ask_openai(data: dict, industry: str = "") -> str:
+    try:
+        prompt = f"""
+        Du är en försäkringsspecialist som analyserar dokument baserat på följande uppgifter:
 
-Analysera följande försäkringsdata och ge en rekommendation anpassad till branschen: {industry}
+        - Bransch: {industry}
+        - Premie: {data.get('premie', 'okänd')} kr
+        - Självrisk: {data.get('självrisk', 'okänd')}
+        - Omfattning:
+{data.get('omfattning', 'Ingen data')}
+        - Karens: {data.get('karens', 'okänt')}
+        - Ansvarstid: {data.get('ansvarstid', 'okänt')}
 
-Data:
-- Omfattning: {data['omfattning']}
-- Undantag: {', '.join(data['undantag'])}
-- Självrisk: {data['självrisk']}
-- Premie: {data['premie']}
-- Belopp: {data['belopp']}
-- Klausuler: {data['klausuler']}
+        Baserat på ovan: 
+        1. Kommentera kort för- och nackdelar.
+        2. Ge konkreta förbättringsförslag för detta företag inom sin bransch.
+        3. Skriv max 3 korta punkter i klartext på svenska.
+        """
 
-Ge ett konkret förslag: höj/sänk försäkringsbelopp, omförhandla klausuler, förbättra omfattning, etc.
-"""
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Du är en expert på försäkringsupphandlingar."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"[AI-fel] {str(e)}"

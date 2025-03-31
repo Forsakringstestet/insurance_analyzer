@@ -19,11 +19,9 @@ Data:
 
 Ge ett konkret förslag: höj/sänk försäkringsbelopp, omförhandla klausuler, förbättra omfattning, etc.
 """
-
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",  # använd denna om du inte har GPT-4-access
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
     )
-
     return response.choices[0].message.content

@@ -22,15 +22,17 @@ def ask_openai(data: dict, industry: str = "") -> str:
         3. Skriv max 3 korta punkter i klartext på svenska.
         """
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Du är en expert på försäkringsupphandlingar."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
+from openai import OpenAI
+
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "Du är en försäkringsexpert..."},
+        {"role": "user", "content": prompt}
+    ]
+)
 
         return response.choices[0].message.content.strip()
     except Exception as e:

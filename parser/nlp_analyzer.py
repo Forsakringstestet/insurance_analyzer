@@ -1,5 +1,26 @@
 import re
 
+def extract_scope(text):
+    return re.findall(r"(omfattning|täcker|inkluderar)[:\s]+(.+?)\n", text, re.IGNORECASE)
+
+def extract_exclusions(text):
+    return re.findall(r"undantag[:\s]+(.+?)\n", text, re.IGNORECASE)
+
+def extract_deductible(text):
+    match = re.search(r"självrisk[:\s]*([0-9.,]+)", text, re.IGNORECASE)
+    return match.group(1).replace(',', '.') if match else "0"
+
+def extract_premium(text):
+    match = re.search(r"premie[:\s]*([0-9.,]+)", text, re.IGNORECASE)
+    return match.group(1).replace(',', '.') if match else "0"
+
+def extract_amount(text):
+    match = re.search(r"(belopp|försäkringsbelopp)[:\s]*([0-9.,]+)", text, re.IGNORECASE)
+    return match.group(2).replace(',', '.') if match else "0"
+
+def extract_clauses(text):
+    return re.findall(r"(särskilda villkor|klausul)[:\s]+(.+?)\n", text, re.IGNORECASE)
+
 def extract_insurance_data(text: str) -> dict:
     return {
         "omfattning": extract_scope(text),
@@ -9,27 +30,3 @@ def extract_insurance_data(text: str) -> dict:
         "belopp": extract_amount(text),
         "klausuler": extract_clauses(text),
     }
-    return data
-
-def extract_scope(text):
-    match = re.search(r"(Omfattning|Täckning):(.+?)(\n|$)", text, re.IGNORECASE)
-    return match.group(2).strip() if match else "Ej hittad"
-
-def extract_exclusions(text):
-    exclusions = re.findall(r"(undantag|ej gäller för):(.+?)(\n|$)", text, re.IGNORECASE)
-    return [e[1].strip() for e in exclusions] if exclusions else []
-
-def extract_deductibles(text):
-    match = re.search(r"(Självrisk|Egen risk):\s*(\d+[.,]?\d*)", text, re.IGNORECASE)
-    return match.group(2) if match else "Ej angiven"
-
-def extract_cost(text):
-    match = re.search(r"(Premie|Kostnad):\s*(\d+[.,]?\d*)", text, re.IGNORECASE)
-    return match.group(2) if match else "Ej angiven"
-
-def extract_limits(text):
-    match = re.search(r"(Försäkringsbelopp|Ansvarsgräns):\s*(\d+[.,]?\d*)", text, re.IGNORECASE)
-    return match.group(2) if match else "Ej angivet"
-
-def extract_clauses(text):
-    return re.findall(r"(§|Klausul)\s*\d+[^:]*:\s*(.+?)(\n|$)", text)

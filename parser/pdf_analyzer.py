@@ -1,14 +1,15 @@
 import re
 from typing import Dict
 
-# Hjälpfunktion för normalisering av belopp
+# Hjälp: Konverterar text till float
 
 def normalize_number(text):
     return float(text.replace(" ", "").replace(".", "").replace(",", "."))
 
 def extract_premium(text):
-    for label in ["total premie", "pris totalt", "totalpris", "totalbelopp", "premie"]:
-        match = re.search(rf"(?i){label}[^0-9]{0,20}([0-9\s.,]+)\s*kr", text)
+    text = text.replace("\n", " ")  # hantera radbrytningar
+    for label in ["total premie", "pris per år", "pris totalt", "totalpris", "totalbelopp", "premie"]:
+        match = re.search(rf"(?i){label}[^0-9]{{0,20}}([0-9\s.,]+)\s*kr?", text)
         if match:
             return normalize_number(match.group(1))
     return 0.0
@@ -21,7 +22,7 @@ def extract_egendom(text):
     egendom = {}
     typer = ["maskiner", "inventarier", "lager", "varor", "egendom"]
     for typ in typer:
-        match = re.search(rf"(?i){typ}[^0-9]{0,20}([0-9\s.,]+)\s*kr", text)
+        match = re.search(rf"(?i){typ}[^0-9]{{0,20}}([0-9\s.,]+)\s*kr", text)
         if match:
             egendom[typ] = normalize_number(match.group(1))
     return egendom
@@ -30,7 +31,7 @@ def extract_ansvar(text):
     ansvar = {}
     typer = ["produktansvar", "verksamhetsansvar", "ansvarsförsäkring", "allmänt ansvar", "företagsansvar"]
     for typ in typer:
-        match = re.search(rf"(?i){typ}[^0-9]{0,20}([0-9\s.,]+)\s*kr", text)
+        match = re.search(rf"(?i){typ}[^0-9]{{0,20}}([0-9\s.,]+)\s*kr", text)
         if match:
             ansvar[typ] = normalize_number(match.group(1))
     return ansvar

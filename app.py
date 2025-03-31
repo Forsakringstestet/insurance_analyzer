@@ -3,7 +3,7 @@ import pandas as pd
 from parser.pdf_extractor import extract_text_from_pdf
 from parser.nlp_analyzer import extract_insurance_data
 from parser.scoring import score_document
-from ai.openai_advisor import ask_openai, ask_openai_compare
+from ai.openai_advisor import ask_openai
 from utils.visualizer import display_results
 from export.export_pdf import export_summary_pdf
 from export.export_excel import export_summary_excel
@@ -30,7 +30,6 @@ for file in uploaded_files:
     raw_text = extract_text_from_pdf(file)
     data = extract_insurance_data(raw_text)
 
-    # Säker konvertering av numeriska fält
     try:
         data["premie"] = float(data.get("premie", 0))
     except:
@@ -64,15 +63,6 @@ with st.expander("📘 AI Rekommendationer per Dokument"):
     for r in analysis_results:
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
-
-with st.expander("🧠 AI-sammanfattning & rekommendation"):
-    if st.button("🔍 Sammanfatta & välj bästa alternativ"):
-        try:
-            summary = ask_openai_compare(analysis_results, industry=industry)
-            st.markdown("## 📌 AI-Analys – Bästa alternativet")
-            st.markdown(summary)
-        except Exception as e:
-            st.error(f"AI-jämförelse misslyckades: {e}")
 
 st.subheader("📤 Exportera resultat")
 if analysis_results:

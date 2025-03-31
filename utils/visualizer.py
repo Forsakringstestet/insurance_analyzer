@@ -1,19 +1,20 @@
+import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
+import plotly.express as px
 
-def display_results(results):
-    for result in results:
-        st.markdown(f"### 📄 {result['filename']}")
-        st.write("**Extraherad information:**", result["data"])
-        st.write("**Poäng:**", result["score"])
-        st.write("**AI-rekommendation:**", result["recommendation"])
-        
-        fig = go.Figure(go.Indicator(
-            mode = "gauge+number",
-            value = result["score"] * 100,
-            title = {'text': "Totalbedömning"},
-            gauge = {
-                'axis': {'range': [0, 100]},
-                'bar': {'color': "green" if result["score"] >= 0.75 else "orange" if result["score"] >= 0.5 else "red"},
-            }))
-        st.plotly_chart(fig, use_container_width=True)
+def display_results(results: list):
+    st.subheader("📊 Jämförelse av försäkringsdokument")
+
+    df = pd.DataFrame([{
+        "Fil": r["filename"],
+        "Omfattning": len(r["data"]["omfattning"]),
+        "Premie": float(r["data"]["premie"]),
+        "Självrisk": float(r["data"]["självrisk"]),
+        "Belopp": float(r["data"]["belopp"]),
+        "Poäng": r["score"],
+    } for r in results])
+
+    st.dataframe(df)
+
+    fig = px.bar(df, x="Fil", y="Poäng", color="Poäng", color_continuous_scale="RdYlGn")
+    st.plotly_chart(fig, use_container_width=True)

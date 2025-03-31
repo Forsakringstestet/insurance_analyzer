@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from parser.pdf_extractor import extract_text_from_pdf
 from parser.nlp_analyzer import extract_insurance_data
 from parser.scoring import score_document
@@ -10,9 +11,9 @@ from export.export_word import generate_procurement_word
 
 st.set_page_config(page_title="Försäkringsanalys", layout="wide")
 
-st.title("📄 Försäkringsbrev- & Villkorsanalys")
+st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
-uploaded_files = st.file_uploader("Ladda upp PDF-filer", type="pdf", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Ladda upp flera PDF-filer för jämförelse", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
     weight_scope = st.slider("Vikt: Omfattning", 0, 100, 40)
@@ -28,14 +29,17 @@ if uploaded_files:
         raw_text = extract_text_from_pdf(file)
         data = extract_insurance_data(raw_text)
         score = score_document(data, weight_scope, weight_cost, weight_deductible, weight_other)
-        recommendation = ask_openai(data, industry=industry)
-        result = {
+        try:
+            recommendation = ask_openai(data, industry=industry)
+        except Exception as e:
+            recommendation = f"Kunde inte hämta AI-rekommendation: {e}"
+
+        analysis_results.append({
             "filename": file.name,
             "data": data,
             "score": score,
             "recommendation": recommendation
-        }
-        analysis_results.append(result)
+        })
 
     display_results(analysis_results)
 
@@ -51,6 +55,7 @@ if uploaded_files:
         if st.button("Exportera till Word"):
             generate_procurement_word(analysis_results)
 
-    with st.expander("🧾 Upphandlingsunderlag"):
-        if st.button("Generera Word-rapport"):
-            generate_procurement_word(analysis_results)
+    with st.expander("📘 AI Rekommendationer per Dokument"):
+        for r in analysis_results:
+            st.markdown(f"### {r['filename']}")
+            st.markdown(r["recommendation"])

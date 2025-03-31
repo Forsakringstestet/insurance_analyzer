@@ -1,9 +1,9 @@
-import openai
+from openai import OpenAI
 import streamlit as st
 
-def ask_openai(data, industry: str = "generell"):
-    openai.api_key = st.secrets["openai"]["api_key"]
+client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
+def ask_openai(data, industry: str = "generell"):
     prompt = f"""
 Du är en AI-specialist inom företagsförsäkringar.
 
@@ -19,9 +19,11 @@ Data:
 
 Ge ett konkret förslag: höj/sänk försäkringsbelopp, omförhandla klausuler, förbättra omfattning, etc.
 """
-    response = openai.ChatCompletion.create(
+
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
     )
-    return response.choices[0].message["content"]
+
+    return response.choices[0].message.content

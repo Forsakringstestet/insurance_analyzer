@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from parser.pdf_extractor import extract_text_from_pdf
-from parser.nlp_analyzer import extract_insurance_data
+from parser.pdf_analyzer import extract_total_premium, extract_deductible, extract_property_insurance, extract_liability_limits, extract_interruption_info
 from parser.scoring import score_document
 from ai.openai_advisor import ask_openai
 from utils.visualizer import display_results
@@ -28,20 +28,23 @@ analysis_results = []
 
 for file in uploaded_files:
     raw_text = extract_text_from_pdf(file)
-    data = extract_insurance_data(raw_text)
 
-    try:
-        data["premie"] = float(data.get("premie", 0))
-    except:
-        data["premie"] = 0.0
-    try:
-        data["självrisk"] = float(data.get("självrisk", 0))
-    except:
-        data["självrisk"] = 0.0
-    try:
-        data["belopp"] = float(data.get("belopp", 0))
-    except:
-        data["belopp"] = 0.0
+    # Ny avancerad extraktion
+    premie = extract_total_premium(raw_text)
+    sjalvrisk = extract_deductible(raw_text)
+    egendom = dict(extract_property_insurance(raw_text))
+    ansvar = dict(extract_liability_limits(raw_text))
+    avbrott = extract_interruption_info(raw_text)
+
+    # Packa till enhetlig data
+    data = {
+        "premie": float(premie.replace(" ", "").replace(",", ".")) if premie else 0.0,
+        "självrisk": sjalvrisk,
+        "belopp": egendom.get("maskiner", 0),
+        "egendom": egendom,
+        "ansvar": ansvar,
+        **avbrott
+    }
 
     score = score_document(data, weight_scope, weight_cost, weight_deductible, weight_other)
 

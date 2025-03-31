@@ -1,13 +1,13 @@
 import re
 
 def extract_insurance_data(text: str) -> dict:
-    data = {
+    return {
         "omfattning": extract_scope(text),
         "undantag": extract_exclusions(text),
-        "självrisk": extract_deductibles(text),
-        "premie": extract_cost(text),
-        "belopp": extract_limits(text),
-        "klausuler": extract_clauses(text)
+        "självrisk": extract_deductible(text),
+        "premie": extract_premium(text),
+        "belopp": extract_amount(text),
+        "klausuler": extract_clauses(text),
     }
     return data
 

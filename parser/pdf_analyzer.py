@@ -1,13 +1,17 @@
 import re
 from typing import Dict
 
-# Hjälp: Konverterar text till float
+# Hjälp: Konverterar text till float, med fallback
 
 def normalize_number(text):
-    return float(text.replace(" ", "").replace(".", "").replace(",", "."))
+    try:
+        cleaned = text.replace(" ", "").replace(".", "").replace(",", ".")
+        return float(cleaned)
+    except (ValueError, AttributeError):
+        return 0.0
 
 def extract_premium(text):
-    text = text.replace("\n", " ")  # hantera radbrytningar
+    text = text.replace("\n", " ")
     for label in ["total premie", "pris per år", "pris totalt", "totalpris", "totalbelopp", "premie"]:
         match = re.search(rf"(?i){label}[^0-9]{{0,20}}([0-9\s.,]+)\s*kr?", text)
         if match:

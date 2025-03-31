@@ -42,7 +42,16 @@ if uploaded_files:
         })
 
     display_results(analysis_results)
-
+if st.button("🔍 Sammanfatta & Välj Bästa Alternativ"):
+    try:
+        summary = ask_openai_compare(analysis_results, industry=industry)
+        st.markdown("## 📌 AI-Analys – Bästa alternativet")
+        st.markdown(summary)
+    except Exception as e:
+        st.error(f"AI-jämförelse misslyckades: {e}")
+with st.expander("🧠 AI-sammanfattning & rekommendation"):
+    if st.button("🔍 Kör jämförelseanalys"):
+        ...
     st.subheader("📤 Exportera resultat")
     col1, col2, col3 = st.columns(3)
     with col1:

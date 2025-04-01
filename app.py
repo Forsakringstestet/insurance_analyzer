@@ -1,7 +1,7 @@
 import streamlit as st
 from parser import pdf_extractor, pdf_analyzer, scoring
 from ai.openai_advisor import ask_openai, ask_openai_extract
-from recommender import generate_recommendation
+from ai.recommender import generate_recommendation
 from export import export_excel, export_pdf, export_word
 from utils import comparison, visualizer
 from utils.enhanced_insurance_ui import display_pretty_summary

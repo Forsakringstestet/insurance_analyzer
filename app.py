@@ -74,3 +74,5 @@ if analysis_results:
             generate_procurement_word(analysis_results)
 else:
     st.info("Inga resultat att exportera.")
+    st.sidebar.write("Nyckel finns?", "OPENAI_API_KEY" in st.secrets)
+

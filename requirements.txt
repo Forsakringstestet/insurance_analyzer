@@ -4,3 +4,4 @@ pandas
 fpdf
 python-docx
 PyMuPDF
+openpyxl==3.1.2

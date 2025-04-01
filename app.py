@@ -10,7 +10,7 @@ from export.export_excel import export_summary_excel
 from export.export_word import generate_procurement_word
 
 st.set_page_config(page_title="Försäkringsanalys", layout="wide")
-st.title("\U0001F4C4 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
+st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
 uploaded_files = st.file_uploader("Ladda upp flera PDF-filer för jämförelse", type="pdf", accept_multiple_files=True)
 
@@ -34,6 +34,7 @@ for file in uploaded_files:
         data["premie"] = float(data.get("premie", 0))
     except:
         data["premie"] = 0.0
+
     try:
         data["självrisk"] = float(str(data.get("självrisk", 0)).replace(" ", "").replace(",", "."))
     except:
@@ -55,12 +56,12 @@ for file in uploaded_files:
 
 display_results(analysis_results)
 
-with st.expander("\U0001F4D8 AI Rekommendationer per Dokument"):
+with st.expander("📘 AI Rekommendationer per Dokument"):
     for r in analysis_results:
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
 
-st.subheader("\U0001F4C4 Exportera resultat")
+st.subheader("📄 Exportera resultat")
 if analysis_results:
     col1, col2, col3 = st.columns(3)
     with col1:

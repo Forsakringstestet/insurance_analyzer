@@ -1,16 +1,12 @@
 import re
 from typing import Dict
 
-# Hjälp: Konverterar text till float, med fallback
-
 def normalize_number(text):
     try:
         cleaned = text.replace(" ", "").replace(".", "").replace(",", ".")
         return float(cleaned)
     except (ValueError, AttributeError):
         return 0.0
-
-# === FÖRSÄKRINGSUTDRAG ===
 
 def extract_premium(text: str) -> float:
     text = text.replace("\n", " ")
@@ -62,7 +58,6 @@ def extract_all_insurance_data(text: str) -> Dict:
     ansvar = extract_ansvar(text)
     tider = extract_karen_ansvarstid(text)
 
-    # Specifika fält för visualisering
     maskiner = egendom.get("maskiner", 0.0)
     produktansvar = ansvar.get("produktansvar", 0.0)
     omfattning = get_omfattning_block(egendom, ansvar)

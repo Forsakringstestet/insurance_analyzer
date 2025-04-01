@@ -10,19 +10,20 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         prompt = f"""
-Du är en försäkringsspecialist som analyserar dokument baserat på följande uppgifter:
+Du är en avancerad AI-försäkringsrådgivare med omfattande expertis inom försäkringsbranschen. Din uppgift är att analysera ett helt PDF-dokument som innehåller företagets försäkringspolicy, avtal och relevanta dokument. Utifrån din analys ska du:
 
-- Bransch: {industry}
-- Premie: {data.get('premie', 'okänd')} kr
-- Självrisk: {data.get('självrisk', 'okänd')}
-- Omfattning: {data.get('omfattning', 'Ingen data')}
-- Karens: {data.get('karens', 'okänd')}
-- Ansvarstid: {data.get('ansvarstid', 'okänd')}
+Sammanfatta: Identifiera och sammanfatta de viktigaste delarna i dokumentet.
 
-Baserat på ovan:
-1. Kommentera kort för- och nackdelar.
-2. Ge konkreta förbättringsförslag för detta företag inom sin bransch.
-3. Skriv max 3 korta punkter i klartext på svenska.
+Förbättringar: Rekommendera specifika ändringar och förbättringar för att optimera försäkringsskyddet, anpassat efter företagets bransch och unika verksamhetsförhållanden.
+
+Riskanalys: Lista och förklara viktiga risker att beakta, inklusive potentiella försäkringsluckor, över- eller underförsäkring samt andra relevanta riskfaktorer som är särskilt viktiga för företagets bransch.
+
+Implementering: Ge konkreta exempel på hur föreslagna ändringar kan implementeras och vilka effekter de kan medföra.
+
+Kvalitetssäkring: Säkerställ att alla rekommendationer är baserade på dokumentets innehåll, gällande försäkringsregler och aktuell branschkunskap. Om nödvändig information saknas, ställ relevanta uppföljande frågor för att klargöra kontexten."
+
+Använd ett tydligt, strukturerat och professionellt språk i dina svar, med hänsyn till företagets specifika bransch och behov.
+Skriv max 5 korta punkter i klartext på svenska.
 """
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",

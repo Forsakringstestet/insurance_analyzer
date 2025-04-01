@@ -28,8 +28,8 @@ Uteslut all bedömning av dokumentstruktur, fokusera på innehåll.
 Baserat på ovan:
 1. Lista fördelar
 2. Lista nackdelar
-3. Ge 2-3 tydliga förbättringsförslag på svenska
-        """
+3. Ge 2–3 tydliga förbättringsförslag på svenska
+"""
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -44,34 +44,39 @@ Baserat på ovan:
         return f"[AI-fel] {str(e)}"
 
 
-# 🔹 GPT-baserad extraktion av nyckeldata i JSON
-
+# 🔹 Finjusterad GPT-extraktion för svenska försäkrings-PDF:er
 def ask_openai_extract(text: str) -> dict:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         prompt = f"""
-Texten nedan kommer från ett försäkringsbrev eller offert.
-Extrahera nyckeldata enligt exakt JSON-formatet nedan:
+Du är en expert på att tolka svenska försäkringsbrev och offerter från bolag som Trygg-Hansa, LF, IF, Dina Försäkringar m.fl.
+Din uppgift är att identifiera och extrahera värden till följande JSON-fält, exakt som nedan:
 
-{{
-  "premie": <float>,
-  "självrisk": <float>,
-  "karens": "<ex: 1 dygn, 72 timmar>",
-  "ansvarstid": "<ex: 12 månader>",
-  "maskiner": <float>,
-  "produktansvar": <float>,
-  "byggnad": <float>,
-  "rättsskydd": <float>,
-  "ansvar": <float>,
-  "varor": <float>,
-  "transport": <float>,
-  "gdpr_ansvar": <float>
-}}
+{
+  "premie": float,
+  "självrisk": float,               # Belopp i SEK, konvertera från t.ex. "0,5 basbelopp"
+  "karens": "text",
+  "ansvarstid": "text",
+  "maskiner": float,
+  "produktansvar": float,
+  "byggnad": float,
+  "rättsskydd": float,
+  "ansvar": float,
+  "varor": float,
+  "transport": float,
+  "gdpr_ansvar": float
+}
 
-Text:
+🧠 Observera:
+- Alla belopp ska konverteras till svenska kronor (SEK).
+- Basbelopp för 2025 är 58 800 kr. Om självrisk anges i t.ex. "0,2 pbb" ska det konverteras till 11760 kr.
+- Om ett fält inte hittas, ange 0 för siffror eller "saknas" för text.
+- Returnera ENDAST korrekt JSON, utan kommentarer.
+
+Text att analysera:
 {text}
-        """
+"""
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",

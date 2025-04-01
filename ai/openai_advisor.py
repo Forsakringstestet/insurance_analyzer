@@ -1,5 +1,6 @@
 import streamlit as st
 from openai import OpenAI
+
 if "OPENAI_API_KEY" not in st.secrets:
     raise ValueError("OPENAI_API_KEY is missing from secrets.")
 
@@ -24,7 +25,7 @@ Baserat på ovan:
 """
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo"
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Du är en försäkringsexpert."},
                 {"role": "user", "content": prompt}

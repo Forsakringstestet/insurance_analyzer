@@ -1,85 +1,72 @@
-# 📘 app.py – huvudfilen för din finans-inriktade försäkringsapp
 import streamlit as st
-from parser import pdf_extractor, pdf_analyzer
+from parser import pdf_extractor, pdf_analyzer, scoring
 from ai.openai_advisor import ask_openai, ask_openai_extract
 from export import export_excel, export_pdf, export_word
-from utils.comparison import render_comparison_table
-from utils.visualizer import display_results
-from utils.enhanced_insurance_ui import display_pretty_summary
-import base64
+from utils import comparison, visualizer, enhanced_insurance_ui
 
-st.set_page_config(page_title="RiskRadar AI", page_icon="📘", layout="wide")
+st.set_page_config(
+    page_title="RiskRadar – AI-försäkringsanalys",
+    page_icon="📄",
+    layout="wide"
+)
 
-# 📘 Sidopanel: Appinformation
-with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Finance_icon.svg/768px-Finance_icon.svg.png", width=60)
-    st.title("RiskRadar AI")
-    st.caption("AI-stödd jämförelse av försäkringsbrev")
-    st.markdown("""
-    **Version:** 1.1.0  
-    **Utvecklare:** Forsakringstestet  
-    [GitHub-repo](https://github.com/Forsakringstestet/insurance_analyzer)
-    """)
+def app():
+    st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/OpenAI_Logo.svg/512px-OpenAI_Logo.svg.png", width=150)
+    st.sidebar.title("🧠 AI-rådgivare")
+    st.sidebar.info("Ladda upp en eller flera PDF:er med försäkringsdokument för att analysera och jämföra erbjudanden.")
 
-# 📘 Huvudrubrik
-st.markdown("""
-<style>
-    h1 {color: #003366; font-size: 36px; margin-bottom: 10px;}
-    .st-emotion-cache-1v0mbdj {background-color: #f0f6ff !important; padding: 1rem; border-radius: 0.5rem;}
-</style>
-<h1>📊 Jämför & Analysera Försäkringsbrev, Offerter & Villkor</h1>
-""", unsafe_allow_html=True)
+    st.title("📘 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
-# 📁 Filuppladdning
-uploaded_files = st.file_uploader("**Ladda upp en eller flera PDF:er** (t.ex. offert eller försäkringsbrev)", type=["pdf"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Ladda upp en eller flera PDF-filer", type=["pdf"], accept_multiple_files=True)
 
-if uploaded_files:
-    industry = st.text_input("📁 Ange bransch (ex: bygg, IT, tillverkning)", "Ingenjörsfirma")
+    if not uploaded_files:
+        st.warning("⬆️ Vänligen ladda upp minst en PDF.")
+        return
 
-    with st.expander("⚙️ Vikter för poängsättning", expanded=False):
-        weight_coverage = st.slider("Vikt: Omfattning", 0, 100, 40)
-        weight_premium = st.slider("Vikt: Premie", 0, 100, 30)
-        weight_deductible = st.slider("Vikt: Självrisk", 0, 100, 20)
-        weight_other = st.slider("Vikt: Övrigt (karens/ansvarstid)", 0, 100, 10)
+    weight_omfattning = st.slider("Vikt: Omfattning", 0, 100, 40)
+    weight_premie = st.slider("Vikt: Premie", 0, 100, 30)
+    weight_sjalvrisk = st.slider("Vikt: Självrisk", 0, 100, 20)
+    weight_ovrigt = st.slider("Vikt: Övrigt (karens/ansvarstid)", 0, 100, 10)
+    industry = st.text_input("Ange bransch (t.ex. bygg, IT, vård)", "Ingenjörsfirma")
 
     analysis_results = []
 
-    for file in uploaded_files:
-        text = pdf_extractor.extract_text_from_pdf(file)
-        st.expander(f"📝 Visa extraherad text för {file.name}", expanded=False).write(text)
+    for uploaded_file in uploaded_files:
+        with st.expander(f"🔍 AI-rådgivning för {uploaded_file.name}", expanded=False):
+            text = pdf_extractor.extract_text_from_pdf(uploaded_file)
 
-        # AI-baserad extraktion
-        ai_data = ask_openai_extract(text)
-        if "fel" in ai_data:
-            st.warning(f"⚠️ AI-extraktion misslyckades: {ai_data['fel']}")
-            continue
+            # 🔎 AI-driven extraktion istället för parser
+            ai_data = ask_openai_extract(text)
 
-        ai_data["score"] = pdf_analyzer.score_document(
-            ai_data, weight_coverage, weight_premium, weight_deductible, weight_other
-        )
-        analysis_results.append({"filename": file.name, "data": ai_data, "score": ai_data["score"]})
+            if "fel" in ai_data:
+                st.warning(f"⚠️ AI-extraktion misslyckades: {ai_data['fel']}")
+                continue
 
-        with st.expander(f"💡 AI-rådgivning för {file.name}"):
-            st.markdown(ask_openai(ai_data, industry))
+            ai_data["score"] = scoring.score_document(
+                ai_data,
+                weight_omfattning,
+                weight_premie,
+                weight_sjalvrisk,
+                weight_ovrigt
+            )
 
-    # ✅ Visa resultatsammanfattning
-    st.markdown("## 📘 Sammanfattning")
-    display_pretty_summary(analysis_results)
+            analysis_results.append({
+                "filename": uploaded_file.name,
+                "data": ai_data,
+                "score": ai_data["score"]
+            })
 
-    # ✅ Visa jämförelsetabeller
-    render_comparison_table(analysis_results)
-    display_results(analysis_results)
+            # AI-rådgivning
+            ai_rek = ask_openai(ai_data, industry)
+            st.markdown("#### 💬 AI-rådgivning")
+            st.info(ai_rek)
 
-    # ✅ Exportera
-    st.markdown("## 📦 Exportera resultat")
-    export_format = st.selectbox("Välj format", ["Excel", "PDF", "Word"])
-    if st.button("💾 Exportera till fil"):
-        if export_format == "Excel":
-            export_excel.export_summary_excel(analysis_results)
-        elif export_format == "PDF":
-            export_pdf.export_summary_pdf(analysis_results)
-        elif export_format == "Word":
-            export_word.generate_procurement_word(analysis_results)
+    if analysis_results:
+        enhanced_insurance_ui.display_pretty_summary(analysis_results)
+        visualizer.display_results(analysis_results)
+        comparison.render_comparison_table(analysis_results)
 
-else:
-    st.info("Ladda upp minst en PDF för att komma igång med analysen.")
+        st.download_button("📥 Exportera till Excel", data=export_excel.export_summary_excel(analysis_results), file_name="analys.xlsx")
+
+if __name__ == "__main__":
+    app()

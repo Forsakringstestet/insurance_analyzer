@@ -1,6 +1,6 @@
-# .gitignore – Skydda API-nyckel och rensa onödiga filer
+# .gitignore – Skydda API-nycklar och rensa onödiga filer
 
-# 🔐 Förhindra att din OpenAI-nyckel laddas upp
+# 🔐 Skydda OpenAI-nyckel och andra hemligheter
 .streamlit/secrets.toml
 
 # 🐍 Python-cache
@@ -26,6 +26,6 @@ Thumbs.db
 dist/
 build/
 
-# 📚 IDE-konfigurationer (VSCode, PyCharm, etc.)
+# 📚 IDE-konfigurationer
 .vscode/
 .idea/

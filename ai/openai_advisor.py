@@ -3,6 +3,8 @@ from openai import OpenAI
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
 Du är en försäkringsspecialist som analyserar dokument baserat på följande uppgifter:
 
@@ -18,7 +20,7 @@ Baserat på ovan:
 2. Ge konkreta förbättringsförslag för detta företag inom sin bransch.
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -26,6 +28,8 @@ Baserat på ovan:
                 {"role": "user", "content": prompt}
             ]
         )
+
         return response.choices[0].message.content.strip()
+
     except Exception as e:
         return f"[AI-fel] {str(e)}"

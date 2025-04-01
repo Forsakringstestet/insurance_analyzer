@@ -1,54 +1,90 @@
 import re
 
-def parse_currency(text):
-    text = text.replace(" ", "").replace(",", ".")
-    match = re.search(r"(\d+(\.\d+)?)", text)
+BASBELOPP_2025 = 58800
+
+def parse_currency(val):
+    val = val.replace(" ", "").replace(".", "").replace(",", ".").replace(":-", "")
+    match = re.search(r"(\d+(?:\.\d+)?)", val)
     return float(match.group(1)) if match else 0.0
 
-def extract_all_insurance_data(text: str) -> dict:
-    data = {
-        "premie": 0.0,
-        "självrisk": 0.0,
-        "maskiner": 0.0,
-        "produktansvar": 0.0,
-        "karens": "",
-        "ansvarstid": ""
-    }
 
+def extract_premie(text):
+    text = text.lower()
+    for pattern in [
+        r"(premie|totalpris|bruttopremie|årspremie|pris per år)[^\d]{0,15}(\d[\d\s.,]+)\s*(kr|sek)?",
+        r"(premie)[^:]{0,10}: ?(\d[\d\s.,]+)\s*(kr|sek)?"
+    ]:
+        match = re.search(pattern, text)
+        if match:
+            return parse_currency(match.group(2))
+    return 0.0
+
+
+def extract_sjalvrisk(text):
     text = text.lower()
 
-    # ---- premie ----
-    m = re.search(r"(premie|pris totalt|totalpris|pris per år|bruttopremie)[^\d]{0,15}(\d[\d\s,.]+) ?kr", text)
-    if m:
-        data["premie"] = parse_currency(m.group(2))
+    basbelopp = re.search(r"(självrisk|självrisken)[^0-9a-zA-Z]{0,10}([0-9.,]+)\s*(basbelopp)", text)
+    if basbelopp:
+        try:
+            val = basbelopp.group(2).replace(",", ".")
+            return float(val) * BASBELOPP_2025
+        except:
+            pass
 
-    # ---- självrisk ----
-    sj = re.search(r"(självrisk)[^\d]{0,10}(\d[\d\s,.]*) ?(kr|basbelopp)?", text)
-    if sj:
-        val = sj.group(2)
-        if "basbelopp" in sj.group(0):
-            # basbelopp to SEK
-            val = float(val.replace(",", ".")) * 58800
-        data["självrisk"] = parse_currency(str(val))
+    kronor = re.search(r"(självrisk|självrisken)[^0-9a-zA-Z]{0,10}([0-9\s.,]+)\s*(kr|sek)?", text)
+    if kronor:
+        raw = kronor.group(2).replace(" ", "").replace(".", "").replace(",", ".")
+        try:
+            return float(raw)
+        except:
+            pass
 
-    # ---- maskiner & inventarier ----
-    mi = re.search(r"(maskiner|maskinförsäkring|maskiner/inventarier).*?(\d[\d\s,.]+) ?kr", text)
-    if mi:
-        data["maskiner"] = parse_currency(mi.group(2))
+    fri = re.search(r"(självrisk.*?)\s(på|är|om)?\s?([0-9\s.,]+)\s*(kr|sek)?", text)
+    if fri:
+        raw = fri.group(3).strip().replace(" ", "").replace(".", "").replace(",", ".")
+        try:
+            return float(raw)
+        except:
+            pass
 
-    # ---- produktansvar / ansvar ----
-    pa = re.search(r"(produktansvar|ansvarsförsäkring).*?(\d[\d\s,.]+) ?kr", text)
-    if pa:
-        data["produktansvar"] = parse_currency(pa.group(2))
+    return 0.0
 
-    # ---- karens ----
-    kar = re.search(r"(karens|väntetid)[^\d]{0,15}(\d{1,2}) ?(dygn|dagar|timmar)", text)
-    if kar:
-        data["karens"] = f"{kar.group(2)} {kar.group(3)}"
 
-    # ---- ansvarstid ----
-    ans = re.search(r"(ansvarstid|avbrottstid).*?(\d{1,2}) ?(månader|mån)", text)
-    if ans:
-        data["ansvarstid"] = f"{ans.group(2)} månader"
+def extract_karens(text):
+    text = text.lower().replace("\n", " ").replace("\xa0", " ")
+    patterns = [
+        r"karens[^0-9a-zA-Z]{0,15}(\d{1,3})\s*(dygn|dagar|dag|timmar|tim|h)",
+        r"(\d{1,3})\s*(dygn|dagar|dag|timmar|tim|h)\s*karens",
+        r"karens\s*är\s*(\d{1,3})\s*(dygn|dagar|timmar|tim|h)",
+        r"karens\s*(\d{1,3})\s*(dygn|dagar|timmar|tim|h)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return f"{match.group(1)} {match.group(2)}".strip()
+    return "saknas"
 
-    return data
+
+def extract_ansvarstid(text):
+    patterns = [
+        r"ansvarstid\s*(?:på)?\s*:? ?(\d{1,2}) ?(mån|månad|månader|år)",
+        r"gäller i\s*(\d{1,2}) ?(mån|månad|månader|år)",
+        r"försäkringstid\s*(\d{1,2}) ?(mån|månad|månader|år)"
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text.lower())
+        if match:
+            antal = int(match.group(1))
+            if "år" in match.group(2):
+                antal *= 12
+            return f"{antal} månader"
+    return "saknas"
+
+
+def extract_all_insurance_data(text: str) -> dict:
+    return {
+        "premie": extract_premie(text),
+        "självrisk": extract_sjalvrisk(text),
+        "karens": extract_karens(text),
+        "ansvarstid": extract_ansvarstid(text)
+    }

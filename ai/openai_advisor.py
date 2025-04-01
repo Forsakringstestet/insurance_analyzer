@@ -1,6 +1,9 @@
 import streamlit as st
-from openai import OpenAI
 import openai
+from openai import OpenAI
+
+# Konfigurerar API-nyckel från Streamlit secrets
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
@@ -19,8 +22,6 @@ Baserat på ovan:
 2. Ge konkreta förbättringsförslag för detta företag inom sin bransch.
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
-
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         response = client.chat.completions.create(
             model="gpt-4",

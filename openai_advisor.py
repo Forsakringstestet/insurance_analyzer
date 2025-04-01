@@ -1,4 +1,5 @@
-# openai_advisor.py
+# ai/openai_advisor.py
+
 import streamlit as st
 import openai
 import json
@@ -10,11 +11,11 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 def ask_openai(data: dict, industry: str = "") -> str:
     """
     Skicka en förfrågan till GPT-3.5 för att få AI-baserade försäkringsrekommendationer.
-    
+
     Args:
-        data (dict): Dictionary med försäkringsdata.
+        data (dict): Försäkringsdata.
         industry (str): Branschspecifik information (valfritt).
-    
+
     Returns:
         str: Rekommendationen från AI.
     """
@@ -47,21 +48,19 @@ Baserat på ovan:
             ]
         )
         return response.choices[0].message.content.strip()
-
     except Exception as e:
         logging.exception("Fel vid anrop till OpenAI")
         return f"[AI-fel] {str(e)}"
 
-
 def ask_openai_extract(text: str) -> dict:
     """
     Skicka text till GPT-3.5 för att extrahera försäkringsdata och returnera det som ett dictionary.
-    
+
     Args:
         text (str): Textutdrag från ett försäkringsbrev eller offert.
-    
+
     Returns:
-        dict: Extraherad data enligt förväntat format.
+        dict: Extraherad data enligt angivet JSON-format.
     """
     try:
         prompt = f"""
@@ -79,7 +78,7 @@ Du ska tolka värdena och returnera en JSON-struktur exakt enligt följande form
 
 Text:
 {text}
-        """
+"""
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[

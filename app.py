@@ -7,29 +7,25 @@ from parser.scoring import score_document
 
 from ai.openai_advisor import ask_openai
 from utils.visualizer import display_results
+from utils.comparison import render_comparison_table
+
 from export.export_pdf import export_summary_pdf
 from export.export_excel import export_summary_excel
 from export.export_word import generate_procurement_word
-from utils.comparison import render_comparison_table
 
 st.set_page_config(page_title="Försäkringsanalys", layout="wide")
 st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
-uploaded_files = st.file_uploader(
-    "Ladda upp en eller flera PDF-filer för jämförelse",
-    type="pdf",
-    accept_multiple_files=True
-)
-
+uploaded_files = st.file_uploader("Ladda upp en eller flera PDF-filer", type="pdf", accept_multiple_files=True)
 if not uploaded_files:
     st.warning("⚠️ Du måste ladda upp minst ett PDF-dokument.")
     st.stop()
 
-# 🔧 Viktade kriterier
+# Viktning
 weight_scope = st.slider("Vikt: Omfattning", 0, 100, 40)
 weight_cost = st.slider("Vikt: Premie", 0, 100, 30)
 weight_deductible = st.slider("Vikt: Självrisk", 0, 100, 20)
-weight_other = st.slider("Vikt: Övrigt", 0, 100, 10)
+weight_other = st.slider("Vikt: Övrigt (karens/ansvarstid)", 0, 100, 10)
 
 industry = st.text_input("Ange bransch (t.ex. bygg, IT, vård)", value="bygg")
 analysis_results = []
@@ -38,36 +34,15 @@ for file in uploaded_files:
     raw_text = extract_text_from_pdf(file)
     data = extract_all_insurance_data(raw_text)
 
-    # 🧹 Hantera siffror
-    try:
-        data["premie"] = float(data.get("premie", 0))
-    except:
-        data["premie"] = 0.0
+    # Sanera fält
+    for key in ["premie", "självrisk", "maskiner", "produktansvar", "varor", "byggnad", "ansvar", "transport", "rättsskydd", "gdpr_ansvar"]:
+        try:
+            data[key] = float(data.get(key, 0))
+        except:
+            data[key] = 0.0
 
-    try:
-        data["självrisk"] = float(str(data.get("självrisk", 0)).replace(" ", "").replace(",", "."))
-    except:
-        data["självrisk"] = 0.0
+    score = score_document(data, weight_scope, weight_cost, weight_deductible, weight_other)
 
-    try:
-        data["maskiner"] = float(data.get("maskiner", 0))
-    except:
-        data["maskiner"] = 0.0
-
-    try:
-        data["produktansvar"] = float(data.get("produktansvar", 0))
-    except:
-        data["produktansvar"] = 0.0
-
-    score = score_document(
-        data,
-        weight_scope,
-        weight_cost,
-        weight_deductible,
-        weight_other
-    )
-
-    # 💬 AI-rådgivning
     try:
         recommendation = ask_openai(data, industry=industry)
     except Exception as e:
@@ -80,7 +55,7 @@ for file in uploaded_files:
         "recommendation": recommendation
     })
 
-# 📊 Visa resultat
+# Visa resultat
 display_results(analysis_results)
 
 with st.expander("📘 AI Rekommendationer per Dokument"):
@@ -88,10 +63,10 @@ with st.expander("📘 AI Rekommendationer per Dokument"):
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
 
+# 📊 Jämförelsetabell
 render_comparison_table(analysis_results)
 
-
-# 📤 Export
+# Export
 st.subheader("📤 Exportera resultat")
 if analysis_results:
     col1, col2, col3 = st.columns(3)

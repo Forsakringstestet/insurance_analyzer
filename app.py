@@ -7,57 +7,62 @@ from utils import comparison, visualizer
 
 def main():
     st.title("AI-försäkringsrådgivare")
-
-    # Placera exportformatvalet i sidopanelen
     st.sidebar.header("Inställningar")
     export_format = st.sidebar.selectbox("Välj exportformat", ["Excel", "PDF", "Word"])
-    
-    # Tillåt att flera PDF:er laddas upp
+
     uploaded_files = st.file_uploader("Ladda upp en eller flera PDF-filer med försäkringsdokument", type=["pdf"], accept_multiple_files=True)
-    
+
     if uploaded_files:
         results = []
         for uploaded_file in uploaded_files:
-            # Skapa en expander för att visa den extraherade texten för varje fil
             with st.expander(f"Visa extraherad text för {uploaded_file.name}"):
                 text = pdf_extractor.extract_text_from_pdf(uploaded_file)
                 st.text_area("Extraherad text", text, height=200)
 
-            # Extrahera data med parsern
+            # Primär extraktion: lokal parser
             insurance_data = pdf_analyzer.extract_all_insurance_data(text)
-            
-            # Gör en scoring (du kan justera vikterna eller importera dem från en config-fil)
             score = scoring.score_document(insurance_data, 1.0, 1.0, 1.0, 1.0)
             insurance_data["score"] = score
-            
-            # Visa den extraherade datan i en separat expander
-            with st.expander(f"Visa extraherad data för {uploaded_file.name}"):
+
+            # Kör AI-extraktion som fallback om parsern misslyckas
+            needs_ai = any(
+                v in [0.0, "saknas", "okänd"]
+                for k, v in insurance_data.items() if k not in ["score"]
+            )
+            ai_extracted = None
+            if needs_ai:
+                with st.spinner("Analyserar dokument med AI..."):
+                    ai_extracted = ask_openai_extract(text)
+
+            # Visa extraherad data
+            with st.expander(f"Parser-data för {uploaded_file.name}"):
                 st.write(insurance_data)
-            
-            # Generera och visa AI-rådgivning
+
+            if ai_extracted:
+                with st.expander(f"📎 AI-förslag på extraktion från {uploaded_file.name}"):
+                    st.write(ai_extracted)
+
+            # AI-rådgivning
             with st.expander(f"AI-rådgivning för {uploaded_file.name}"):
                 ai_recommendation = ask_openai(insurance_data)
                 st.write(ai_recommendation)
-            
-            # Generera och visa en enkel rekommendation
+
+            # Enkel regelbaserad rekommendation
             with st.expander(f"Enkel rekommendation för {uploaded_file.name}"):
                 simple_recommendation = generate_recommendation(insurance_data)
                 st.write(simple_recommendation)
-            
-            # Samla resultatet
+
             results.append({
                 "filename": uploaded_file.name,
                 "data": insurance_data,
                 "score": score
             })
-        
-        # Visa jämförelsetabell och sammanställning med färgkodning
+
         st.subheader("Jämförelsetabell")
         comparison.render_comparison_table(results)
         st.subheader("Sammanställning")
         visualizer.display_results(results)
-        
-        # Exportera sammanställning
+
         if st.button("Exportera sammanställning"):
             if export_format == "Excel":
                 export_excel.export_summary_excel(results)

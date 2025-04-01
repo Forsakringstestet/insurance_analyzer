@@ -1,80 +1,54 @@
 import re
-from typing import Dict
 
-BASBELOPP_2025 = 58800
+def parse_currency(text):
+    text = text.replace(" ", "").replace(",", ".")
+    match = re.search(r"(\d+(\.\d+)?)", text)
+    return float(match.group(1)) if match else 0.0
 
-def normalize_number(text):
-    try:
-        cleaned = text.replace(" ", "").replace(".", "").replace(",", ".").replace(":-", "")
-        return float(cleaned)
-    except Exception:
-        return 0.0
-
-def match_any_pattern(text: str, labels: list, suffix: str = r"\s*kr") -> float:
-    for label in labels:
-        match = re.search(rf"(?i){label}[^0-9]{{0,20}}([0-9\s.,]+){suffix}?", text)
-        if match:
-            return normalize_number(match.group(1))
-    return 0.0
-
-def extract_premium(text: str) -> float:
-    return match_any_pattern(text, ["total premie", "pris totalt", "premie", "totalpris", "pris per år", "försäkringskostnad"])
-
-def extract_deductible(text: str) -> float:
-    match = re.search(r"(?i)(självrisk|självrisken)[^0-9]{0,20}([0-9\s.,]+)\s*basbelopp", text)
-    if match:
-        return normalize_number(match.group(2)) * BASBELOPP_2025
-    return match_any_pattern(text, ["självrisk", "självrisken"])
-
-def extract_dynamic_block(text: str, patterns: list, label: str) -> Dict:
-    for pattern in patterns:
-        match = re.search(rf"(?i){pattern}[^0-9]{{0,20}}([0-9\s.,]+)\s*(kr)?", text)
-        if match:
-            return {label: normalize_number(match.group(1))}
-    return {}
-
-def extract_egendom(text: str) -> Dict:
-    egendom = {}
-    egendom.update(extract_dynamic_block(text, ["maskiner", "maskinutrustning", "lös egendom"], "maskiner"))
-    egendom.update(extract_dynamic_block(text, ["varor", "lager", "råvaror"], "varor"))
-    egendom.update(extract_dynamic_block(text, ["inredning", "inventarier"], "inredning"))
-    return egendom
-
-def extract_ansvar(text: str) -> Dict:
-    ansvar = {}
-    ansvar.update(extract_dynamic_block(text, ["produktansvar"], "produktansvar"))
-    ansvar.update(extract_dynamic_block(text, ["verksamhetsansvar", "allmänt ansvar"], "verksamhetsansvar"))
-    ansvar.update(extract_dynamic_block(text, ["ansvarsförsäkring", "företagsansvar"], "ansvarsförsäkring"))
-    ansvar.update(extract_dynamic_block(text, ["förmögenhetsbrott", "ekonomisk brottslighet"], "förmögenhetsbrott"))
-    return ansvar
-
-def extract_karen_ansvarstid(text: str) -> Dict:
-    karens = re.search(r"(?i)(karens|karensdagar)[^0-9]{0,20}(\d+\s*(dygn|dagar|timmar|tim|h))", text)
-    ansvarstid = re.search(r"(?i)(ansvarstid)[^0-9]{0,20}(\d+\s*(månader|mån|dagar|år))", text)
-    return {
-        "karens": karens.group(2).strip() if karens else "saknas",
-        "ansvarstid": ansvarstid.group(2).strip() if ansvarstid else "saknas"
+def extract_all_insurance_data(text: str) -> dict:
+    data = {
+        "premie": 0.0,
+        "självrisk": 0.0,
+        "maskiner": 0.0,
+        "produktansvar": 0.0,
+        "karens": "",
+        "ansvarstid": ""
     }
 
-def get_omfattning_block(egendom: Dict, ansvar: Dict) -> str:
-    eg = ", ".join([f"{k}: {v:,.0f} kr" for k, v in egendom.items()]) or "Ingen egendom specificerad"
-    an = ", ".join([f"{k}: {v:,.0f} kr" for k, v in ansvar.items()]) or "Ingen ansvarsförsäkring hittad"
-    return f"Egendom: {eg}\nAnsvar: {an}"
+    text = text.lower()
 
-def extract_all_insurance_data(text: str) -> Dict:
-    premie = extract_premium(text)
-    sjalvrisk = extract_deductible(text)
-    egendom = extract_egendom(text)
-    ansvar = extract_ansvar(text)
-    tider = extract_karen_ansvarstid(text)
+    # ---- premie ----
+    m = re.search(r"(premie|pris totalt|totalpris|pris per år|bruttopremie)[^\d]{0,15}(\d[\d\s,.]+) ?kr", text)
+    if m:
+        data["premie"] = parse_currency(m.group(2))
 
-    return {
-        "premie": premie,
-        "självrisk": sjalvrisk,
-        "maskiner": egendom.get("maskiner", 0.0),
-        "produktansvar": ansvar.get("produktansvar", 0.0),
-        "egendom": egendom,
-        "ansvar": ansvar,
-        "omfattning": get_omfattning_block(egendom, ansvar),
-        **tider
-    }
+    # ---- självrisk ----
+    sj = re.search(r"(självrisk)[^\d]{0,10}(\d[\d\s,.]*) ?(kr|basbelopp)?", text)
+    if sj:
+        val = sj.group(2)
+        if "basbelopp" in sj.group(0):
+            # basbelopp to SEK
+            val = float(val.replace(",", ".")) * 58800
+        data["självrisk"] = parse_currency(str(val))
+
+    # ---- maskiner & inventarier ----
+    mi = re.search(r"(maskiner|maskinförsäkring|maskiner/inventarier).*?(\d[\d\s,.]+) ?kr", text)
+    if mi:
+        data["maskiner"] = parse_currency(mi.group(2))
+
+    # ---- produktansvar / ansvar ----
+    pa = re.search(r"(produktansvar|ansvarsförsäkring).*?(\d[\d\s,.]+) ?kr", text)
+    if pa:
+        data["produktansvar"] = parse_currency(pa.group(2))
+
+    # ---- karens ----
+    kar = re.search(r"(karens|väntetid)[^\d]{0,15}(\d{1,2}) ?(dygn|dagar|timmar)", text)
+    if kar:
+        data["karens"] = f"{kar.group(2)} {kar.group(3)}"
+
+    # ---- ansvarstid ----
+    ans = re.search(r"(ansvarstid|avbrottstid).*?(\d{1,2}) ?(månader|mån)", text)
+    if ans:
+        data["ansvarstid"] = f"{ans.group(2)} månader"
+
+    return data

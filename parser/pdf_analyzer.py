@@ -1,10 +1,14 @@
+# Parser/pdf_analyzer.py
 import re
 import streamlit as st
 
-BASBELOPP_2025 = 58800
+# Om du vill använda BASBELOPP från config:
+from config import BASBELOPP_2025
 
-
-def parse_currency(val):
+def parse_currency(val: str) -> float:
+    """
+    Omvandlar en valuta-sträng till float.
+    """
     try:
         val = val.replace(" ", "").replace(".", "").replace(",", ".").replace(":-", "")
         match = re.search(r"(\d+(?:\.\d+)?)", val)
@@ -12,8 +16,10 @@ def parse_currency(val):
     except Exception:
         return 0.0
 
-
-def extract_sum_by_keywords(keywords, text):
+def extract_sum_by_keywords(keywords: list, text: str) -> float:
+    """
+    Extraherar summan av värden baserat på angivna nyckelord.
+    """
     total = 0.0
     for kw in keywords:
         pattern = rf"{kw}.*?([\d\s.,]+)\s*(kr|sek)?"
@@ -22,8 +28,10 @@ def extract_sum_by_keywords(keywords, text):
             total += parse_currency(match[0])
     return total
 
-
-def extract_total_premie(text):
+def extract_total_premie(text: str) -> float:
+    """
+    Extraherar total premie med olika sökmönster.
+    """
     patterns = [
         r"totalt.*?SEK[\s]*([\d\s.,]+)",
         r"pris för tiden.*?SEK[\s]*([\d\s.,]+)",
@@ -38,13 +46,17 @@ def extract_total_premie(text):
         ["byggnad", "maskiner", "varor", "avbrott", "ansvar", "person", "rättsskydd"], text
     )
 
-
-def extract_field(pattern, text):
+def extract_field(pattern: str, text: str) -> float:
+    """
+    Generisk funktion för att extrahera ett fält med ett givet mönster.
+    """
     match = re.search(pattern, text, re.IGNORECASE)
     return parse_currency(match.group(1)) if match else 0.0
 
-
-def extract_sjalvrisk(text):
+def extract_sjalvrisk(text: str) -> float:
+    """
+    Extraherar självrisk med hantering av 'pbb' om nödvändigt.
+    """
     match = re.search(r"(självrisk)[^\d]{0,10}([\d\s.,]+)\s*(kr|sek|pbb)?", text, re.IGNORECASE)
     if match:
         raw = match.group(2)
@@ -53,8 +65,10 @@ def extract_sjalvrisk(text):
         return val * BASBELOPP_2025 if "pbb" in unit.lower() else val
     return 0.0
 
-
-def extract_karens(text):
+def extract_karens(text: str) -> str:
+    """
+    Extraherar karens (antal dygn/timmar).
+    """
     patterns = [
         r"karens[^0-9a-zA-Z]{0,15}(\d{1,3})\s*(dygn|dagar|dag|timmar|tim|h)",
         r"(\d{1,3})\s*(dygn|dagar|dag|timmar|tim|h)\s*karens",
@@ -65,8 +79,10 @@ def extract_karens(text):
             return f"{match.group(1)} {match.group(2)}"
     return "saknas"
 
-
-def extract_ansvarstid(text):
+def extract_ansvarstid(text: str) -> str:
+    """
+    Extraherar ansvarstid eller ersättningstid.
+    """
     patterns = [
         r"(ersättningstid|försäkringstid|ansvarstid).*?(\d{1,2})\s*(månader|månad|år)",
         r"gäller i\s*(\d{1,2})\s*(månader|månad|år)",
@@ -74,45 +90,66 @@ def extract_ansvarstid(text):
     for pattern in patterns:
         match = re.search(pattern, text.lower())
         if match:
-            antal = int(match.group(2 if 'ersättningstid' in pattern else 1))
-            enhet = match.group(3 if 'ersättningstid' in pattern else 2)
+            antal = int(match.group(2)) if 'ersättningstid' in pattern or len(match.groups()) > 2 else int(match.group(1))
+            enhet = match.group(3) if 'ersättningstid' in pattern or len(match.groups()) > 2 else match.group(2)
             return f"{antal * 12 if 'år' in enhet else antal} månader"
     return "saknas"
 
-
-def extract_byggnad(text):
+def extract_byggnad(text: str) -> float:
+    """
+    Extraherar byggnadsvärde.
+    """
     return extract_field(r"byggnad.*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_maskiner(text):
+def extract_maskiner(text: str) -> float:
+    """
+    Extraherar maskinvärde.
+    """
     return extract_field(r"(maskiner|maskinerier|inventarier).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_varor(text):
+def extract_varor(text: str) -> float:
+    """
+    Extraherar varuvärde.
+    """
     return extract_field(r"varor.*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_transport(text):
+def extract_transport(text: str) -> float:
+    """
+    Extraherar transportvärde.
+    """
     return extract_field(r"(transport|godsförsäkring).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_produktansvar(text):
+def extract_produktansvar(text: str) -> float:
+    """
+    Extraherar produktansvar.
+    """
     return extract_field(r"(produktansvar).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_ansvar(text):
+def extract_ansvar(text: str) -> float:
+    """
+    Extraherar ansvarsvärde.
+    """
     return extract_field(r"(verksamhetsansvar).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_rattsskydd(text):
+def extract_rattsskydd(text: str) -> float:
+    """
+    Extraherar rättsskyddsvärde.
+    """
     return extract_field(r"(rättsskydd).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
-def extract_gdpr_ansvar(text):
+def extract_gdpr_ansvar(text: str) -> float:
+    """
+    Extraherar GDPR-ansvarsvärde.
+    """
     return extract_field(r"(gdpr).*?([\d\s.,]+)\s*(kr|sek)?", text)
 
-
 def extract_all_insurance_data(text: str) -> dict:
+    """
+    Extraherar samlad försäkringsdata från text med felhantering.
+    
+    Returns:
+        dict: Innehåller extraherade värden.
+    """
     try:
         return {
             "premie": extract_total_premie(text),

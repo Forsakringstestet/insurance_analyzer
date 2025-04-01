@@ -1,10 +1,10 @@
+import openai
 import streamlit as st
-from openai import OpenAI
 
 if "OPENAI_API_KEY" not in st.secrets:
     raise ValueError("OPENAI_API_KEY is missing from secrets.")
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
@@ -24,11 +24,11 @@ Baserat på ovan:
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
 
-        response = client.completions.create(
+        response = openai.Completion.create(
             model="text-davinci-003",
             prompt=prompt,
-            max_tokens=500,
             temperature=0.7,
+            max_tokens=800,
         )
 
         return response.choices[0].text.strip()

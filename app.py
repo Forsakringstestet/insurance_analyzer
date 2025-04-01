@@ -3,7 +3,7 @@ import pandas as pd
 from parser.pdf_extractor import extract_text_from_pdf
 from parser.pdf_analyzer import extract_all_insurance_data
 from parser.scoring import score_document
-from ai.openai_advisor import ask_openai_with_fulltext  # 🧠 Uppdaterad funktion här!
+from ai.openai_advisor import ask_openai
 from utils.visualizer import display_results
 from export.export_pdf import export_summary_pdf
 from export.export_excel import export_summary_excel
@@ -42,7 +42,7 @@ for file in uploaded_files:
     score = score_document(data, weight_scope, weight_cost, weight_deductible, weight_other)
 
     try:
-        recommendation = ask_openai_with_fulltext(raw_text, industry=industry)
+        recommendation = ask_openai(data, industry=industry)
     except Exception as e:
         recommendation = f"Kunde inte hämta AI-rekommendation: {e}"
 
@@ -60,7 +60,7 @@ with st.expander("📘 AI Rekommendationer per Dokument"):
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
 
-st.subheader("📄 Exportera resultat")
+st.subheader("📤 Exportera resultat")
 if analysis_results:
     col1, col2, col3 = st.columns(3)
     with col1:

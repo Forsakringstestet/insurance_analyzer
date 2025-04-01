@@ -1,0 +1,13 @@
+# Skydda känsliga filer
+.streamlit/secrets.toml
+
+# Python cache & virtuella miljöer
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+
+# OS-filer
+.DS_Store

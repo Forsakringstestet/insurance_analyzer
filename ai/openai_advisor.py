@@ -1,5 +1,7 @@
 import streamlit as st
 from openai import OpenAI
+if "OPENAI_API_KEY" not in st.secrets:
+    raise ValueError("OPENAI_API_KEY is missing from secrets.")
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:

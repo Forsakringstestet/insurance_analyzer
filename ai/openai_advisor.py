@@ -10,20 +10,17 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         prompt = f"""
-Du är en avancerad AI-försäkringsrådgivare med omfattande expertis inom försäkringsbranschen. Din uppgift är att analysera ett helt PDF-dokument som innehåller företagets försäkringspolicy, avtal och relevanta dokument. Utifrån din analys ska du:
+Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
 
-Sammanfatta: Identifiera och sammanfatta de viktigaste delarna i dokumentet.
+Analysera ett PDF-dokument som innehåller företagets försäkringspolicy, avtal och övriga relevanta dokument.
 
-Förbättringar: Rekommendera specifika ändringar och förbättringar för att optimera försäkringsskyddet, anpassat efter företagets bransch och unika verksamhetsförhållanden.
+Fokusera på att ge konkreta och praktiska råd kring försäkringsskyddets omfattning, samt identifiera centrala riskfaktorer anpassade efter företagets specifika bransch.
 
-Riskanalys: Lista och förklara viktiga risker att beakta, inklusive potentiella försäkringsluckor, över- eller underförsäkring samt andra relevanta riskfaktorer som är särskilt viktiga för företagets bransch.
+Utesluta analyser av dokumentets struktur eller formella uppbyggnad – din bedömning ska enbart grunda sig på innehållet och dess praktiska konsekvenser.
 
-Implementering: Ge konkreta exempel på hur föreslagna ändringar kan implementeras och vilka effekter de kan medföra.
+Svara med högst 5 korta och tydliga punkter.
 
-Kvalitetssäkring: Säkerställ att alla rekommendationer är baserade på dokumentets innehåll, gällande försäkringsregler och aktuell branschkunskap. Om nödvändig information saknas, ställ relevanta uppföljande frågor för att klargöra kontexten."
-
-Använd ett tydligt, strukturerat och professionellt språk i dina svar, med hänsyn till företagets specifika bransch och behov.
-Skriv max 5 korta punkter i klartext på svenska.
+Om viktig information saknas, ställ följdfrågor för att klargöra nödvändig kontext.
 """
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",

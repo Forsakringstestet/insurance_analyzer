@@ -4,10 +4,10 @@ from openai import OpenAI
 if "OPENAI_API_KEY" not in st.secrets:
     raise ValueError("OPENAI_API_KEY is missing from secrets.")
 
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
         prompt = f"""
 Du är en försäkringsspecialist som analyserar dokument baserat på följande uppgifter:
 
@@ -24,15 +24,14 @@ Baserat på ovan:
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
 
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Du är en försäkringsexpert."},
-                {"role": "user", "content": prompt}
-            ]
+        response = client.completions.create(
+            model="text-davinci-003",
+            prompt=prompt,
+            max_tokens=500,
+            temperature=0.7,
         )
 
-        return response.choices[0].message.content.strip()
+        return response.choices[0].text.strip()
 
     except Exception as e:
         return f"[AI-fel] {str(e)}"

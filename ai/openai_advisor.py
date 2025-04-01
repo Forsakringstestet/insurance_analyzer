@@ -1,12 +1,10 @@
 import streamlit as st
 import openai
-from openai import OpenAI
-
-# Konfigurerar API-nyckel från Streamlit secrets
-client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
+        openai.api_key = st.secrets["openai_api_key"]
+
         prompt = f"""
 Du är en försäkringsspecialist som analyserar dokument baserat på följande uppgifter:
 
@@ -23,7 +21,7 @@ Baserat på ovan:
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
 
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Du är en försäkringsexpert."},

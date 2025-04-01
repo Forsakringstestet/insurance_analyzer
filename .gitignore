@@ -1,13 +1,31 @@
-# Skydda känsliga filer
+# .gitignore – Skydda API-nyckel och rensa onödiga filer
+
+# 🔐 Förhindra att din OpenAI-nyckel laddas upp
 .streamlit/secrets.toml
 
-# Python cache & virtuella miljöer
+# 🐍 Python-cache
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.pyc
+
+# ⚙️ Virtuella miljöer
 env/
 venv/
+ENV/
+.venv/
+env.bak/
 
-# OS-filer
+# 💾 Systemfiler
 .DS_Store
+Thumbs.db
+
+# 📦 Paket
+*.egg-info/
+dist/
+build/
+
+# 📚 IDE-konfigurationer (VSCode, PyCharm, etc.)
+.vscode/
+.idea/

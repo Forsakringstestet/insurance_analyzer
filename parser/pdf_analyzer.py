@@ -3,9 +3,6 @@ import streamlit as st
 
 BASBELOPP_2025 = 58800
 
-def clean_text(text):
-    return re.sub(r"\s+", " ", text).lower()
-
 def parse_currency(val):
     try:
         val = val.replace(" ", "").replace(".", "").replace(",", ".").replace(":-", "")
@@ -14,27 +11,53 @@ def parse_currency(val):
     except Exception:
         return 0.0
 
-def extract_field(patterns, text):
-    for pattern in patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            return parse_currency(match.group(1))
+def extract_field(pattern, text):
+    match = re.search(pattern, text, re.IGNORECASE)
+    return parse_currency(match.group(1)) if match else 0.0
+
+def extract_all_sjalvrisker(text: str) -> list:
+    matches = re.findall(r"självrisk[^\n\r:]*[:\-]?\s*([\d\s.,]+\s*(kr|sek|%|pbb)?)", text, re.IGNORECASE)
+    result = []
+    for raw_value, unit in matches:
+        clean_val = raw_value.replace(" ", "").replace(",", ".")
+        try:
+            if "%" in unit:
+                val = f"{float(clean_val)} %"
+            elif "pbb" in unit.lower():
+                val = f"{float(clean_val)} pbb"
+            else:
+                val = f"{int(float(clean_val))} kr"
+            if val not in result:
+                result.append(val)
+        except:
+            continue
+    return result
+
+def extract_primary_sjalvrisk(text):
+    sjalvrisker = extract_all_sjalvrisker(text)
+    for val in sjalvrisker:
+        if "kr" in val:
+            return parse_currency(val)
+        elif "pbb" in val:
+            return float(val.split(" ")[0]) * BASBELOPP_2025
     return 0.0
 
-def extract_total_premie(text):
-    patterns = [
-        r"total(?: premie|kostnad)?[^0-9]{0,15}([\d\s.,]+)\s*(kr|sek)?",
-        r"premie.*?([\d\s.,]+)\s*(kr|sek)?",
-        r"summa.*?([\d\s.,]+)\s*(kr|sek)?"
-    ]
-    return extract_field(patterns, text)
+def extract_all_belopp_for_area(text: str, area: str) -> list:
+    matches = re.findall(rf"{area}[^\n\r:]*[:\-]?\s*([\d\s.,]+)\s*(kr|sek)?", text, re.IGNORECASE)
+    values = set()
+    for raw_value, _ in matches:
+        cleaned = raw_value.replace(" ", "").replace(",", ".")
+        try:
+            values.add(f"{int(float(cleaned))} kr")
+        except:
+            continue
+    return list(values)
 
-def extract_sjalvrisk(text):
-    match = re.search(r"(självrisk)[^\d]{0,10}([\d\s.,]+)\s*(kr|sek|pbb)?", text, re.IGNORECASE)
-    if match:
-        val = parse_currency(match.group(2))
-        unit = match.group(3) or ""
-        return val * BASBELOPP_2025 if "pbb" in unit.lower() else val
+def extract_primary_value_for_area(text: str, area: str) -> float:
+    values = extract_all_belopp_for_area(text, area)
+    for val in values:
+        if "kr" in val:
+            return float(val.replace(" kr", ""))
     return 0.0
 
 def extract_karens(text):
@@ -50,45 +73,33 @@ def extract_karens(text):
 
 def extract_ansvarstid(text):
     patterns = [
-        r"(ansvarstid|försäkringstid|ersättningstid).*?(\d{1,2})\s*(månader|månad|år)",
-        r"gäller i\s*(\d{1,2})\s*(månader|månad|år)",
+        r"(ersättningstid|försäkringstid|ansvarstid).*?(\d{1,2})\s*(månader|månad|\u00e5r)",
+        r"gäller i\s*(\d{1,2})\s*(månader|månad|\u00e5r)",
     ]
     for pattern in patterns:
         match = re.search(pattern, text.lower())
         if match:
             antal = int(match.group(2 if 'ersättningstid' in pattern else 1))
             enhet = match.group(3 if 'ersättningstid' in pattern else 2)
-            return f"{antal * 12 if 'år' in enhet else antal} månader"
+            return f"{antal * 12 if 'ar' in enhet else antal} månader"
     return "saknas"
-
-def extract_keyword_sum(keywords, text):
-    total = 0.0
-    for kw in keywords:
-        pattern = rf"{kw}.*?([\d\s.,]+)\s*(kr|sek)?"
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
-            total += parse_currency(match[0])
-    return total
 
 def extract_all_insurance_data(text: str) -> dict:
     try:
-        text = clean_text(text)
-
         return {
-            "premie": extract_total_premie(text),
-            "självrisk": extract_sjalvrisk(text),
+            "premie": extract_primary_value_for_area(text, "premie"),
+            "självrisk": extract_primary_sjalvrisk(text),
             "karens": extract_karens(text),
             "ansvarstid": extract_ansvarstid(text),
-            "byggnad": extract_keyword_sum(["byggnad", "fastighet", "byggnader"], text),
-            "maskiner": extract_keyword_sum(["maskiner", "inventarier", "utrustning"], text),
-            "varor": extract_keyword_sum(["varor", "lager", "förråd"], text),
-            "transport": extract_keyword_sum(["transport", "godsförsäkring", "leverans"], text),
-            "produktansvar": extract_keyword_sum(["produktansvar"], text),
-            "ansvar": extract_keyword_sum(["verksamhetsansvar", "ansvarsförsäkring"], text),
-            "rättsskydd": extract_keyword_sum(["rättsskydd", "juridiskt skydd"], text),
-            "gdpr_ansvar": extract_keyword_sum(["gdpr", "personuppgifter"], text),
+            "byggnad": extract_primary_value_for_area(text, "byggnad"),
+            "maskiner": extract_primary_value_for_area(text, "maskiner|inventarier|utrustning"),
+            "varor": extract_primary_value_for_area(text, "varor|lager|förråd"),
+            "transport": extract_primary_value_for_area(text, "transport|godsförsäkring"),
+            "produktansvar": extract_primary_value_for_area(text, "produktansvar"),
+            "ansvar": extract_primary_value_for_area(text, "verksamhetsansvar|ansvarsförsäkring"),
+            "rättsskydd": extract_primary_value_for_area(text, "rättsskydd|juridiskt skydd"),
+            "gdpr_ansvar": extract_primary_value_for_area(text, "gdpr|personuppgifter"),
         }
-
     except Exception as e:
         st.error(f"[PDF-analyzern kraschade] {e}")
         return {

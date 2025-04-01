@@ -10,7 +10,7 @@ from utils.visualizer import display_results
 from export.export_pdf import export_summary_pdf
 from export.export_excel import export_summary_excel
 from export.export_word import generate_procurement_word
-
+from utils.comparison import render_comparison_table
 
 st.set_page_config(page_title="Försäkringsanalys", layout="wide")
 st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
@@ -88,10 +88,8 @@ with st.expander("📘 AI Rekommendationer per Dokument"):
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
 
-from utils.comparison import render_comparison_table
-
-# Visa jämförelsetabell under AI-resultat
 render_comparison_table(analysis_results)
+
 
 # 📤 Export
 st.subheader("📤 Exportera resultat")

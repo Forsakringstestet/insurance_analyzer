@@ -24,7 +24,7 @@ Baserat på ovan:
 """
 
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo"
             messages=[
                 {"role": "system", "content": "Du är en försäkringsexpert."},
                 {"role": "user", "content": prompt}

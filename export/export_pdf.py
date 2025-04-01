@@ -1,15 +1,46 @@
+# export/export_pdf.py
+
 from fpdf import FPDF
 import streamlit as st
+import tempfile
 
 def export_summary_pdf(results):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Arial", size=10)
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.set_font("Arial", style="B", size=14)
+    pdf.cell(200, 10, txt="Jämförelse av Försäkringsdokument", ln=True, align="C")
+    pdf.ln(10)
+
     for r in results:
-        pdf.cell(200, 10, txt=f"Fil: {r['filename']}", ln=True)
-        for k, v in r["data"].items():
-            pdf.cell(200, 10, txt=f"{k.capitalize()}: {v}", ln=True)
-        pdf.cell(200, 10, txt=f"Poäng: {r['score']}", ln=True)
-        pdf.cell(200, 10, txt=f"Rekommendation: {r['recommendation']}", ln=True)
+        data = r["data"]
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(200, 10, txt=r["filename"], ln=True)
+        pdf.set_font("Arial", size=10)
+
+        for label, key in [
+            ("Poäng", "score"),
+            ("Premie", "premie"),
+            ("Självrisk", "självrisk"),
+            ("Maskiner", "maskiner"),
+            ("Varor", "varor"),
+            ("Byggnad", "byggnad"),
+            ("Transport", "transport"),
+            ("Produktansvar", "produktansvar"),
+            ("Ansvar", "ansvar"),
+            ("Rättsskydd", "rättsskydd"),
+            ("GDPR ansvar", "gdpr_ansvar"),
+            ("Karens", "karens"),
+            ("Ansvarstid", "ansvarstid"),
+        ]:
+            val = r["data"].get(key) if key in r["data"] else r.get(key)
+            pdf.cell(60, 8, txt=f"{label}:", ln=0)
+            pdf.cell(60, 8, txt=f"{val}", ln=1)
+
         pdf.ln(5)
-    st.download_button("Ladda ner PDF", pdf.output(dest='S').encode('latin-1'), file_name="analys.pdf")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
+        pdf.output(f.name)
+        st.download_button("📄 Ladda ner PDF", data=open(f.name, "rb"), file_name="forsakringsjämforelse.pdf")

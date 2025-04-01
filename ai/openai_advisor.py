@@ -1,10 +1,11 @@
 import openai
 import streamlit as st
+from openai import OpenAI  # OBS! Nytt i v1
 
 if "OPENAI_API_KEY" not in st.secrets:
-    raise ValueError("OPENAI_API_KEY is missing from Streamlit secrets.")
+    raise ValueError("OPENAI_API_KEY is missing from secrets.")
 
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
@@ -24,14 +25,13 @@ Baserat på ovan:
 3. Skriv max 3 korta punkter i klartext på svenska.
 """
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # <- you can change to gpt-4 if you have access
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Du är en försäkringsexpert."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
-            max_tokens=1000
+            temperature=0.7
         )
 
         return response.choices[0].message.content.strip()

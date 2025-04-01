@@ -1,30 +1,35 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
-def display_results(results):
-    if not results:
-        st.warning("Inga analyserade dokument att visa.")
-        return
 
-    table_data = []
-    for r in results:
-        row = {
-            "Fil": r["filename"],
-            "Premie": r["data"].get("premie", 0),
-            "Självrisk": r["data"].get("självrisk", 0),
-            "Maskiner": r["data"].get("egendom", {}).get("maskiner", 0),
-            "Produktansvar": r["data"].get("ansvar", {}).get("produktansvar", 0),
-            "Karens": r["data"].get("karens", "-"),
-            "Ansvarstid": r["data"].get("ansvarstid", "-"),
-            "Poäng": r["score"]
-        }
-        table_data.append(row)
+def display_results(analysis_results):
+    st.subheader("📊 Sammanställning & Jämförelse")
 
-    df = pd.DataFrame(table_data)
-    st.subheader("📊 Jämförelse av försäkringsdokument")
-    st.dataframe(df)
+    # Tabellformat
+    rows = []
+    for item in analysis_results:
+        data = item["data"]
+        rows.append({
+            "Filnamn": item["filename"],
+            "Poäng": round(item["score"], 2),
+            "Premie (kr)": data.get("premie", 0),
+            "Självrisk (kr)": data.get("självrisk", 0),
+            "Maskiner (kr)": data.get("maskiner", 0),
+            "Produktansvar (kr)": data.get("produktansvar", 0),
+            "Karens": data.get("karens", "okänt"),
+            "Ansvarstid": data.get("ansvarstid", "okänt"),
+        })
 
-    fig = px.bar(df, x="Fil", y="Poäng", color="Poäng", text_auto=True,
-                 color_continuous_scale="RdYlGn", height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    df = pd.DataFrame(rows)
+
+    # Färgkodning för Poäng (grön → röd)
+    def highlight_score(val):
+        if val >= 80:
+            color = 'lightgreen'
+        elif val >= 50:
+            color = 'khaki'
+        else:
+            color = 'salmon'
+        return f'background-color: {color}'
+
+    st.dataframe(df.style.applymap(highlight_score, subset=['Poäng']))

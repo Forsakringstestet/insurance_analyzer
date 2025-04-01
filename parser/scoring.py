@@ -1,6 +1,18 @@
-# parser/scoring.py
-
-def score_document(data, weight_scope, weight_cost, weight_deductible, weight_other):
+# Parser/scoring.py
+def score_document(data: dict, weight_scope: float, weight_cost: float, weight_deductible: float, weight_other: float) -> float:
+    """
+    Beräknar ett poängvärde för ett försäkringsdokument baserat på extraherade värden.
+    
+    Args:
+        data (dict): Försäkringsdata.
+        weight_scope (float): Vikt för omfattningsvärden.
+        weight_cost (float): Vikt för premie.
+        weight_deductible (float): Vikt för självrisk.
+        weight_other (float): Övrig vikt.
+    
+    Returns:
+        float: Poäng, avrundat till 4 decimaler.
+    """
     def safe_get(key, default=0.0):
         val = data.get(key)
         try:
@@ -30,7 +42,6 @@ def score_document(data, weight_scope, weight_cost, weight_deductible, weight_ot
         gdpr_ansvar
     )
 
-    # Enklare logik: högre scope, lägre premie/självrisk => högre score
     score = (
         (weight_scope * scope_value) -
         (weight_cost * premie) -

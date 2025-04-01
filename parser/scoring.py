@@ -1,44 +1,40 @@
+# parser/scoring.py
+
 def score_document(data, weight_scope, weight_cost, weight_deductible, weight_other):
-    # Normalize vikt-summa
-    total_weight = weight_scope + weight_cost + weight_deductible + weight_other
-    if total_weight == 0:
-        return 0
+    def safe_get(key, default=0.0):
+        val = data.get(key)
+        try:
+            return float(val) if val not in [None, "saknas", "okänt", "None"] else default
+        except:
+            return default
 
-    # === Scope (omfattning) ===
-    scope_fields = [
-        data.get("maskiner", 0),
-        data.get("varor", 0),
-        data.get("byggnad", 0),
-        data.get("produktansvar", 0),
-        data.get("ansvar", 0),
-        data.get("rättsskydd", 0),
-        data.get("gdpr_ansvar", 0),
-        data.get("transport", 0),
-    ]
-    scope_score = sum(scope_fields)
+    premie = safe_get("premie")
+    självrisk = safe_get("självrisk")
+    maskiner = safe_get("maskiner")
+    varor = safe_get("varor")
+    byggnad = safe_get("byggnad")
+    transport = safe_get("transport")
+    produktansvar = safe_get("produktansvar")
+    ansvar = safe_get("ansvar")
+    rättsskydd = safe_get("rättsskydd")
+    gdpr_ansvar = safe_get("gdpr_ansvar")
 
-    # === Premie (ju lägre desto bättre) ===
-    premie = data.get("premie", 0)
-    cost_score = -premie  # negativ påverkan
+    scope_value = (
+        maskiner +
+        varor +
+        byggnad +
+        transport +
+        produktansvar +
+        ansvar +
+        rättsskydd +
+        gdpr_ansvar
+    )
 
-    # === Självrisk (ju lägre desto bättre) ===
-    sjalvrisk = data.get("självrisk", 0)
-    deductible_score = -sjalvrisk  # negativ påverkan
-
-    # === Övrigt (t.ex. AI-betyg, ansvarstid, karens) ===
-    ansvarstid = data.get("ansvarstid", "0").split()[0]
-    ansvarstid = int(ansvarstid) if ansvarstid.isdigit() else 0
-
-    karens = data.get("karens", "0").split()[0]
-    karens_val = int(karens) if karens.isdigit() else 0
-    other_score = ansvarstid - karens_val  # längre ansvarstid & kortare karens = bättre
-
-    # === Total viktad poäng ===
-    total_score = (
-        (scope_score * weight_scope) +
-        (cost_score * weight_cost) +
-        (deductible_score * weight_deductible) +
-        (other_score * weight_other)
-    ) / total_weight
-
-    return round(total_score, 2)
+    # Enklare logik: högre scope, lägre premie/självrisk => högre score
+    score = (
+        (weight_scope * scope_value) -
+        (weight_cost * premie) -
+        (weight_deductible * självrisk) +
+        (weight_other * 1000)
+    )
+    return round(score, 4)

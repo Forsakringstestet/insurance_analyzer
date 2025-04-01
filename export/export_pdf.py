@@ -1,25 +1,30 @@
-# export/export_pdf.py
-
+# Export/export_pdf.py
 from fpdf import FPDF
 import streamlit as st
 import tempfile
 
-def export_summary_pdf(results):
+def export_summary_pdf(results: list) -> None:
+    """
+    Exporterar en sammanställning av analyserade data till en PDF-fil.
+    
+    Args:
+        results (list): Lista med dictionaries innehållande 'filename' och 'data'.
+    """
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=10)
     pdf.set_auto_page_break(auto=True, margin=15)
-
+    
     pdf.set_font("Arial", style="B", size=14)
     pdf.cell(200, 10, txt="Jämförelse av Försäkringsdokument", ln=True, align="C")
     pdf.ln(10)
-
+    
     for r in results:
-        data = r["data"]
+        data = r.get("data", {})
         pdf.set_font("Arial", style="B", size=12)
-        pdf.cell(200, 10, txt=r["filename"], ln=True)
+        pdf.cell(200, 10, txt=r.get("filename", "Utan filnamn"), ln=True)
         pdf.set_font("Arial", size=10)
-
+    
         for label, key in [
             ("Poäng", "score"),
             ("Premie", "premie"),
@@ -35,12 +40,13 @@ def export_summary_pdf(results):
             ("Karens", "karens"),
             ("Ansvarstid", "ansvarstid"),
         ]:
-            val = r["data"].get(key) if key in r["data"] else r.get(key)
+            val = data.get(key, r.get(key, "saknas"))
             pdf.cell(60, 8, txt=f"{label}:", ln=0)
             pdf.cell(60, 8, txt=f"{val}", ln=1)
-
+    
         pdf.ln(5)
-
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
         pdf.output(f.name)
-        st.download_button("📄 Ladda ner PDF", data=open(f.name, "rb"), file_name="forsakringsjämforelse.pdf")
+        with open(f.name, "rb") as file:
+            st.download_button("📄 Ladda ner PDF", data=file.read(), file_name="forsakringsjämforelse.pdf")

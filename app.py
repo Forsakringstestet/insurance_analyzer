@@ -88,6 +88,11 @@ with st.expander("📘 AI Rekommendationer per Dokument"):
         st.markdown(f"### {r['filename']}")
         st.markdown(r["recommendation"])
 
+from utils.comparison import render_comparison_table
+
+# Visa jämförelsetabell under AI-resultat
+render_comparison_table(analysis_results)
+
 # 📤 Export
 st.subheader("📤 Exportera resultat")
 if analysis_results:

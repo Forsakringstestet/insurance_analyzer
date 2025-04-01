@@ -34,7 +34,6 @@ for file in uploaded_files:
         data["premie"] = float(data.get("premie", 0))
     except:
         data["premie"] = 0.0
-
     try:
         data["självrisk"] = float(str(data.get("självrisk", 0)).replace(" ", "").replace(",", "."))
     except:

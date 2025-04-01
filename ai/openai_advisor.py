@@ -2,34 +2,31 @@ import streamlit as st
 import openai
 import json
 
-# 🔹 GPT-3.5 för AI-rekommendationer baserat på extraherade värden
+# GPT-3.5 AI-försäkringsrådgivare
+
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
 Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
 Analysera ett försäkringsdokument för ett företag.
-Du ska:
-1. Kommentera för- och nackdelar utifrån det skydd och de risker som dokumentet beskriver.
-2. Ge förbättringsförslag som om du vore försäkringsmäklare – konkret, praktiskt och branschanpassat.
-3. Utelämna formalia och fokusera på verkligt skyddsvärde och brister.
+Fokusera på att ge konkreta och praktiska råd kring försäkringsskyddets omfattning, identifiera centrala riskfaktorer anpassade efter företagets bransch.
+Uteslut kommentarer om dokumentets struktur eller grammatik.
 
-Data för bedömning:
 - Bransch: {industry}
 - Premie: {data.get('premie', 'okänd')} kr
 - Självrisk: {data.get('självrisk', 'okänd')}
+- Omfattning: {data.get('omfattning', 'Ingen data')}
 - Karens: {data.get('karens', 'okänd')}
 - Ansvarstid: {data.get('ansvarstid', 'okänd')}
 - Maskiner: {data.get('maskiner', 'okänd')} kr
 - Produktansvar: {data.get('produktansvar', 'okänd')} kr
-- GDPR ansvar: {data.get('gdpr_ansvar', 'okänd')} kr
-- Byggnad: {data.get('byggnad', 'okänd')} kr
-- Rättsskydd: {data.get('rättsskydd', 'okänd')} kr
 
-Gör en översikt:
-1. Fördelar
-2. Risker / svagheter
-3. Förbättringsförslag (max 3 punkter, svenska)
+Baserat på ovan:
+1. Lista fördelar och nackdelar.
+2. Ge förbättringsförslag i punktform.
+3. Max 3 tydliga punkter på svenska.
 """
 
         response = client.chat.completions.create(
@@ -45,47 +42,56 @@ Gör en översikt:
         return f"[AI-fel] {str(e)}"
 
 
-# 🔹 GPT-3.5 för AI-baserad extraktion från fri text i PDF:er
+# GPT-3.5 AI-drivna extraktion av fält från PDF
+
 def ask_openai_extract(text: str) -> dict:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
-Texten nedan kommer från ett försäkringsbrev eller offert.
-Identifiera och extrahera så korrekt som möjligt de följande fälten och returnera som JSON:
+Du är en försäkringsexpert. Extrahera följande data från försäkringsdokumentet nedan. Svara ENDAST med en korrekt formatterad JSON enligt strukturen:
 
-- premie (float)
-- självrisk (float i kronor, välj den viktigaste om flera anges)
-- karens (str)
-- ansvarstid (str, i månader eller år)
-- maskiner (float)
-- produktansvar (float)
-- byggnad (float)
-- rättsskydd (float)
-- gdpr_ansvar (float)
-
-Format:
 {{
-  "premie": ...,
-  "självrisk": ...,
-  "karens": "...",
-  "ansvarstid": "...",
-  "maskiner": ...,
-  "produktansvar": ...,
-  "byggnad": ...,
-  "rättsskydd": ...,
-  "gdpr_ansvar": ...
+  "premie": float,
+  "självrisk": float,
+  "karens": "text",
+  "ansvarstid": "text",
+  "maskiner": float,
+  "produktansvar": float,
+  "byggnad": float,
+  "varor": float,
+  "transport": float,
+  "ansvar": float,
+  "rättsskydd": float,
+  "gdpr_ansvar": float
 }}
 
-Text:
+Exempel:
+{{
+  "premie": 15837.0,
+  "självrisk": 10000.0,
+  "karens": "1 dygn",
+  "ansvarstid": "12 månader",
+  "maskiner": 700000.0,
+  "produktansvar": 10000000.0,
+  "byggnad": 200000.0,
+  "varor": 100000.0,
+  "transport": 100000.0,
+  "ansvar": 10000000.0,
+  "rättsskydd": 300000.0,
+  "gdpr_ansvar": 10000000.0
+}}
+
+Text att analysera:
 {text}
 """
+
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Du är en expert på att tolka försäkringsvillkor."},
+                {"role": "system", "content": "Du är en försäkringsexpert."},
                 {"role": "user", "content": prompt}
-            ],
-            response_format="json"
+            ]
         )
 
         return json.loads(response.choices[0].message.content)
@@ -99,6 +105,9 @@ Text:
             "maskiner": 0.0,
             "produktansvar": 0.0,
             "byggnad": 0.0,
+            "varor": 0.0,
+            "transport": 0.0,
+            "ansvar": 0.0,
             "rättsskydd": 0.0,
             "gdpr_ansvar": 0.0,
             "fel": f"[GPT-fel] {str(e)}"

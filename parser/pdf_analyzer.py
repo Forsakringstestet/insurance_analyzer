@@ -73,15 +73,15 @@ def extract_karens(text):
 
 def extract_ansvarstid(text):
     patterns = [
-        r"(ersättningstid|försäkringstid|ansvarstid).*?(\d{1,2})\s*(månader|månad|\u00e5r)",
-        r"gäller i\s*(\d{1,2})\s*(månader|månad|\u00e5r)",
+        r"(ersättningstid|försäkringstid|ansvarstid).*?(\d{1,2})\s*(månader|månad|år)",
+        r"gäller i\s*(\d{1,2})\s*(månader|månad|år)",
     ]
     for pattern in patterns:
         match = re.search(pattern, text.lower())
         if match:
             antal = int(match.group(2 if 'ersättningstid' in pattern else 1))
             enhet = match.group(3 if 'ersättningstid' in pattern else 2)
-            return f"{antal * 12 if 'ar' in enhet else antal} månader"
+            return f"{antal * 12 if 'år' in enhet else antal} månader"
     return "saknas"
 
 def extract_all_insurance_data(text: str) -> dict:
@@ -116,3 +116,31 @@ def extract_all_insurance_data(text: str) -> dict:
             "rättsskydd": 0.0,
             "gdpr_ansvar": 0.0,
         }
+
+def score_document(data: dict, vikt_omfattning=40, vikt_premie=30, vikt_självrisk=20, vikt_övrigt=10) -> float:
+    """
+    Poängsätter ett försäkringsdokument utifrån viktade kriterier.
+    """
+    omfattning_score = (
+        data.get("maskiner", 0)
+        + data.get("produktansvar", 0)
+        + data.get("byggnad", 0)
+        + data.get("varor", 0)
+        + data.get("transport", 0)
+        + data.get("ansvar", 0)
+        + data.get("rättsskydd", 0)
+        + data.get("gdpr_ansvar", 0)
+    )
+
+    premie_score = 1000000 - data.get("premie", 0)
+    sjalvrisk_score = 100000 - data.get("självrisk", 0)
+    övrigt_score = 0
+
+    total_score = (
+        omfattning_score * (vikt_omfattning / 100)
+        + premie_score * (vikt_premie / 100)
+        + sjalvrisk_score * (vikt_självrisk / 100)
+        + övrigt_score * (vikt_övrigt / 100)
+    )
+
+    return round(total_score, 2)

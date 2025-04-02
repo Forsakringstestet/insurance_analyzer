@@ -9,7 +9,5 @@ fpdf
 openpyxl
 PyMuPDF
 python-dotenv
-
-# Färgtema och UI-styling (används via config)
 streamlit-extras
 streamlit-theme

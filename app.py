@@ -1,72 +1,78 @@
 import streamlit as st
-from parser import pdf_extractor, pdf_analyzer, scoring
+import os
+from parser import pdf_extractor, pdf_analyzer
 from ai.openai_advisor import ask_openai, ask_openai_extract
+from utils.visualizer import render_comparison_table
+from utils.enhanced_insurance_ui import display_pretty_summary, configure_sidebar
 from export import export_excel, export_pdf, export_word
-from utils import comparison, visualizer, enhanced_insurance_ui
+
+# Konfigurera sidopanel
+configure_sidebar()
 
 st.set_page_config(
-    page_title="RiskRadar – AI-försäkringsanalys",
-    page_icon="📄",
-    layout="wide"
+    page_title="Försäkringsanalys",
+    page_icon="💼",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-def app():
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/OpenAI_Logo.svg/512px-OpenAI_Logo.svg.png", width=150)
-    st.sidebar.title("🧠 AI-rådgivare")
-    st.sidebar.info("Ladda upp en eller flera PDF:er med försäkringsdokument för att analysera och jämföra erbjudanden.")
+st.title("💼 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
-    st.title("📘 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
+# Ladda upp PDF-filer
+uploaded_files = st.file_uploader("Ladda upp en eller flera PDF-filer", type="pdf", accept_multiple_files=True)
 
-    uploaded_files = st.file_uploader("Ladda upp en eller flera PDF-filer", type=["pdf"], accept_multiple_files=True)
+analysis_results = []
 
-    if not uploaded_files:
-        st.warning("⬆️ Vänligen ladda upp minst en PDF.")
-        return
+if uploaded_files:
+    st.divider()
+    st.subheader("📂 Extraktion & AI-analys")
 
-    weight_omfattning = st.slider("Vikt: Omfattning", 0, 100, 40)
-    weight_premie = st.slider("Vikt: Premie", 0, 100, 30)
-    weight_sjalvrisk = st.slider("Vikt: Självrisk", 0, 100, 20)
-    weight_ovrigt = st.slider("Vikt: Övrigt (karens/ansvarstid)", 0, 100, 10)
-    industry = st.text_input("Ange bransch (t.ex. bygg, IT, vård)", "Ingenjörsfirma")
+    for file in uploaded_files:
+        filename = file.name
+        with st.expander(f"Visa extraherad text för {filename}"):
+            text = pdf_extractor.extract_text_from_pdf(file)
+            st.text_area("Extraherad text", text, height=200)
 
-    analysis_results = []
-
-    for uploaded_file in uploaded_files:
-        with st.expander(f"🔍 AI-rådgivning för {uploaded_file.name}", expanded=False):
-            text = pdf_extractor.extract_text_from_pdf(uploaded_file)
-
-            # 🔎 AI-driven extraktion istället för parser
+        # AI-baserad extraktion
+        with st.expander(f"🤖 AI-förslag på extraktion från {filename}", expanded=True):
             ai_data = ask_openai_extract(text)
+            st.json(ai_data)
 
-            if "fel" in ai_data:
-                st.warning(f"⚠️ AI-extraktion misslyckades: {ai_data['fel']}")
-                continue
+        # AI-rekommendationer
+        with st.expander(f"💬 AI-rådgivning för {filename}"):
+            advice = ask_openai(ai_data)
+            st.write(advice)
 
-            ai_data["score"] = scoring.score_document(
-                ai_data,
-                weight_omfattning,
-                weight_premie,
-                weight_sjalvrisk,
-                weight_ovrigt
-            )
+        # Scoring och sammanställning
+        ai_data["filename"] = filename
+        ai_data["score"] = pdf_analyzer.score_document(
+            ai_data,
+            vikt_omfattning=40,
+            vikt_premie=30,
+            vikt_självrisk=20,
+            vikt_övrigt=10,
+        )
 
-            analysis_results.append({
-                "filename": uploaded_file.name,
-                "data": ai_data,
-                "score": ai_data["score"]
-            })
+        analysis_results.append({
+            "filename": filename,
+            "data": ai_data,
+            "score": ai_data["score"]
+        })
 
-            # AI-rådgivning
-            ai_rek = ask_openai(ai_data, industry)
-            st.markdown("#### 💬 AI-rådgivning")
-            st.info(ai_rek)
+    # Visa tabeller och sammanställningar
+    st.divider()
+    st.subheader("📊 Jämförelsetabell med färgkodning")
+    render_comparison_table(analysis_results)
 
-    if analysis_results:
-        enhanced_insurance_ui.display_pretty_summary(analysis_results)
-        visualizer.display_results(analysis_results)
-        comparison.render_comparison_table(analysis_results)
+    st.divider()
+    display_pretty_summary(analysis_results)
 
-        st.download_button("📥 Exportera till Excel", data=export_excel.export_summary_excel(analysis_results), file_name="analys.xlsx")
-
-if __name__ == "__main__":
-    app()
+    st.subheader("📤 Exportera resultat")
+    export_format = st.selectbox("Välj format", ["Excel", "PDF", "Word"])
+    if st.button("Exportera resultat"):
+        if export_format == "Excel":
+            export_excel.export_summary_excel(analysis_results)
+        elif export_format == "PDF":
+            export_pdf.export_summary_pdf(analysis_results)
+        elif export_format == "Word":
+            export_word.generate_procurement_word(analysis_results)

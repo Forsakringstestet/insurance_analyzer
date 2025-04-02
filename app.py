@@ -1,4 +1,4 @@
-import streamlit as st
+""import streamlit as st
 import pandas as pd
 from utils.visualizer import render_comparison_table
 from utils.enhanced_insurance_ui import display_pretty_summary
@@ -25,7 +25,7 @@ if uploaded_files:
     for uploaded_file in uploaded_files:
         with st.spinner(f"🔎 Bearbetar {uploaded_file.name}..."):
             text = pdf_extractor.extract_text_from_pdf(uploaded_file)
-            ai_data = ask_openai_extract(text)
+            ai_data = ask_openai_extract(text, industry)  # Skicka med bransch till extraktion
 
             if not ai_data or "fel" in ai_data:
                 st.warning(f"⚠️ AI-extraktion misslyckades: {ai_data.get('fel') if isinstance(ai_data, dict) else 'Okänt fel'}")

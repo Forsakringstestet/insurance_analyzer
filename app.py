@@ -132,7 +132,7 @@ if uploaded_files:
         try:
             # Pass industry to recommender if selected (exclude "Ej valt")
             if selected_industry and selected_industry != "Ej valt":
-                recommendations = generate_recommendation(data, industry)
+                recommendations = generate_recommendation(data, selected_industry)
             else:
                 recommendations = generate_recommendation(data)
         except Exception as e:

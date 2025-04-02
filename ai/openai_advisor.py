@@ -2,28 +2,30 @@ import streamlit as st
 import openai
 import json
 
-# ✨ GPT-3.5 för AI-rekommendationer baserat på extraherade fält
+# GPT-3.5: AI-försäkringsrådgivning
+
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         prompt = f"""
 Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
-Analysera ett försäkringsdokument som innehåller policy, avtal och villkor.
-Fokusera på att ge konkreta råd kring skyddets omfattning och riskfaktorer utifrån bransch.
+Analysera ett försäkringsdokument för ett företag inom branschen: {industry}.
 
-- Bransch: {industry}
+Ge konkreta och praktiska råd kring:
+1. Försäkringsskyddets styrkor och svagheter
+2. Riskfaktorer och förbättringsförslag
+
+Data:
 - Premie: {data.get('premie', 'okänd')} kr
-- Självrisk: {data.get('självrisk', 'okänd')}
+- Självrisk: {data.get('självrisk', 'okänd')} kr
+- Karens: {data.get('karens', 'okänd')}
+- Ansvarstid: {data.get('ansvarstid', 'okänd')}
 - Maskiner: {data.get('maskiner', 'okänd')} kr
 - Produktansvar: {data.get('produktansvar', 'okänd')} kr
 - Ansvar: {data.get('ansvar', 'okänd')} kr
-- Karens: {data.get('karens', 'okänd')}
-- Ansvarstid: {data.get('ansvarstid', 'okänd')}
 
-1. Kommentera för- och nackdelar.
-2. Ge konkreta förbättringsförslag.
-3. Max 3 punkter på svenska.
+Svar i form av max 3 tydliga punkter på svenska.
 """
 
         response = client.chat.completions.create(
@@ -33,36 +35,36 @@ Fokusera på att ge konkreta råd kring skyddets omfattning och riskfaktorer uti
                 {"role": "user", "content": prompt}
             ]
         )
+
         return response.choices[0].message.content.strip()
 
     except Exception as e:
         return f"[AI-fel] {str(e)}"
 
 
-# ✨ GPT-3.5 för AI-driven extraktion av premie, självrisk, ansvarstid osv
+# GPT-3.5: AI-extraktion av fält från text
 
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         prompt = f"""
-Du är en försäkringsexpert. Extrahera följande fält ur dokumentet nedan:
-Returnera ENDAST en korrekt JSON utan inledning eller eftertext.
+Du är en försäkringsexpert. Extrahera följande fält ur försäkringsdokumentet nedan. Returnera ENDAST en JSON utan extra text.
 
-Format:
+Fält:
 {{
-  "premie": float,
-  "självrisk": float,
-  "karens": "str",
-  "ansvarstid": "str",
-  "maskiner": float,
-  "produktansvar": float,
-  "byggnad": float,
-  "rättsskydd": float,
-  "transport": float,
-  "varor": float,
-  "ansvar": float,
-  "gdpr_ansvar": float
+  "premie": float,               # SEK
+  "självrisk": float,            # SEK
+  "karens": "text",             # Exempel: "1 dygn"
+  "ansvarstid": "text",         # Exempel: "12 månader"
+  "maskiner": float,             # SEK
+  "produktansvar": float,       # SEK
+  "byggnad": float,             # SEK
+  "rättsskydd": float,         # SEK
+  "transport": float,           # SEK
+  "varor": float,               # SEK
+  "ansvar": float,              # SEK
+  "gdpr_ansvar": float          # SEK
 }}
 
 Text:
@@ -72,21 +74,19 @@ Text:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Du är en expert på försäkringsvillkor."},
+                {"role": "system", "content": "Du är en försäkringsanalytiker."},
                 {"role": "user", "content": prompt}
             ]
         )
 
-        # Försök att plocka ut JSON ur svaret, använd JSON-lokaliserare om något slinker in före/efter
         content = response.choices[0].message.content.strip()
-        start = content.find("{")
-        end = content.rfind("}") + 1
-        if start == -1 or end == -1:
-            raise ValueError("Ingen giltig JSON hittades i GPT-svaret.")
 
-        cleaned_json = content[start:end]
-        return json.loads(cleaned_json)
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            st.warning("AI-extraktion misslyckades: Kunde inte tolka JSON")
+            return {}
 
     except Exception as e:
-        st.warning(f"AI-extraktion misslyckades: {str(e)}")
+        st.warning(f"AI-extraktion misslyckades: [GPT-fel] {str(e)}")
         return {}

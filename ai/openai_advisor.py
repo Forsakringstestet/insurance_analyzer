@@ -2,7 +2,7 @@ import streamlit as st
 import openai
 import json
 
-# ⭉ GPT-3.5 för AI-rekommendationer baserat på extraherade värden
+# GPT-3.5 för AI-rekommendationer baserat på extraherade värden
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -36,29 +36,34 @@ Uteslut analyser av dokumentets struktur eller formella uppbyggnad – din bedö
         return f"[AI-fel] {str(e)}"
 
 
-# ⭉ GPT-3.5 för AI-driven extraktion av premie, självrisk, ansvarstid osv från hela PDF:en
+# GPT-3.5 för AI-driven extraktion av försäkringsdata i JSON-format
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
-Du är en försäkringsexpert. Extrahera följande fält ur ett försäkringsdokument i fri text:
-Returnera endast en JSON med nedan format. Undvik att skriva något före eller efter JSON.
+Du är en försäkringsexpert. Extrahera följande fält ur ett försäkringsdokument i fri text.
+Returnera endast en giltig JSON-struktur (inga kommentarer eller förklaringar).
 
-Fält:
-  "premie": float,               # Belopp i SEK
-  "självrisk": float,           # Belopp i SEK, konvertera från t.ex. "0,5 basbelopp"
-  "karens": "text",             # T.ex. "1 dygn"
-  "ansvarstid": "text",         # T.ex. "12 månader"
-  "maskiner": float,            # Belopp i SEK
-  "produktansvar": float,       # Belopp i SEK
-  "byggnad": float,             # Belopp i SEK
-  "rättsskydd": float,         # Belopp i SEK
-  "transport": float,           # Belopp i SEK
-  "varor": float,               # Belopp i SEK
-  "ansvar": float,              # Belopp i SEK
-  "gdpr_ansvar": float          # Belopp i SEK
+Om ett värde anges som "0,5 basbelopp", räkna om det till SEK (1 basbelopp = 58 800 SEK).
 
-Text:
+Struktur:
+{{
+  "premie": float,
+  "självrisk": float,
+  "karens": "text",
+  "ansvarstid": "text",
+  "maskiner": float,
+  "produktansvar": float,
+  "byggnad": float,
+  "rättsskydd": float,
+  "transport": float,
+  "varor": float,
+  "ansvar": float,
+  "gdpr_ansvar": float
+}}
+
+Text att analysera:
 {text}
         """
 
@@ -70,10 +75,16 @@ Text:
             ]
         )
 
-        # Försök läsa JSON direkt från svaret
         content = response.choices[0].message.content.strip()
+
+        # Försök tolka som JSON
         try:
-            return json.loads(content)
+            data = json.loads(content)
+            if isinstance(data, dict):
+                return data
+            else:
+                st.warning("AI-extraktion misslyckades: JSON var inte ett dictionary-objekt.")
+                return {}
         except json.JSONDecodeError:
             st.warning("AI-extraktion misslyckades: Kunde inte tolka JSON")
             return {}

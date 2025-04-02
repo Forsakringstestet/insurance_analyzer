@@ -1,92 +1,62 @@
 import streamlit as st
-import pandas as pd
-from utils.visualizer import render_comparison_table
-from utils.enhanced_insurance_ui import display_pretty_summary
-from parser import pdf_extractor, pdf_analyzer
+from Parser import pdf_extractor, pdf_analyzer
 from ai.openai_advisor import ask_openai, ask_openai_extract
-from export import export_excel, export_pdf, export_word
+from Export import export_excel
+from Utils.visualizer import render_comparison_table
+from Utils.enhanced_insurance_ui import display_pretty_summary
 
-# ✅ Måste vara först bland Streamlit-kommandon
-st.set_page_config(
-    page_title="Försäkringsanalys",
-    page_icon="📄",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="AI Försäkringsanalys", layout="wide")
 
-# 🌐 Anpassat tema (Streamlit themes styrs från .streamlit/config.toml)
+st.sidebar.title("📁 Ladda upp och analysera PDF")
+industry = st.sidebar.selectbox("Välj bransch (används för AI-analys)", [
+    "Tillverkning", "Bygg", "Konsult", "Transport", "IT", "Detaljhandel", "Annat"
+])
 
-# 🎛️ Sidopanel
-st.sidebar.title("🔍 Försäkringsanalysverktyg")
-st.sidebar.markdown("""
-Analysera och jämför PDF-dokument som innehåller:
-- Försäkringsbrev
-- Offerter
-- Villkor
+st.title("Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 
-Verktyget använder AI för att föreslå förbättringar och summera risker.
-""")
-
-industry = st.sidebar.selectbox("🏭 Välj bransch", [
-    "Ingenjörsfirma", "IT-företag", "Tillverkande industri",
-    "Bygg & Entreprenad", "Transport", "Handel", "Annan bransch"])
-
-st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
-
-uploaded_files = st.file_uploader(
-    "📤 Ladda upp en eller flera PDF-filer", type=["pdf"], accept_multiple_files=True)
+uploaded_files = st.sidebar.file_uploader("Ladda upp en eller flera PDF:er", type=["pdf"], accept_multiple_files=True)
+analysis_results = []
 
 if uploaded_files:
-    analysis_results = []
-
     for uploaded_file in uploaded_files:
-        with st.spinner(f"🔎 Bearbetar {uploaded_file.name}..."):
+        with st.expander(f"✏️ Analys av: {uploaded_file.name}", expanded=True):
             text = pdf_extractor.extract_text_from_pdf(uploaded_file)
-            ai_data = ask_openai_extract(text, industry)  # 🧠 AI-driven extraktion med bransch
 
-            if not ai_data or "fel" in ai_data:
-                st.warning(f"⚠️ AI-extraktion misslyckades: {ai_data.get('fel') if isinstance(ai_data, dict) else 'Okänt fel'}")
+            ai_data = ask_openai_extract(text, industry)
+            if ai_data.get("fel"):
+                st.warning(f"AI-extraktion misslyckades: {ai_data['fel']}")
                 continue
 
-            ai_data["score"] = pdf_analyzer.score_document(
-                ai_data,
-                vikt_omfattning=40,
-                vikt_premie=30,
-                vikt_självrisk=20,
-                vikt_övrigt=10
-            )
+            ai_data["score"] = pdf_analyzer.score_document(ai_data)
+
+            st.subheader("📊 Sammanfattning")
+            display_pretty_summary(ai_data)
+
+            with st.expander("🤖 AI-rådgivning"):
+                advice = ask_openai(ai_data, industry)
+                st.markdown(advice)
 
             analysis_results.append({
                 "filename": uploaded_file.name,
-                "data": ai_data
+                "data": ai_data,
+                "score": ai_data["score"]
             })
 
-            with st.expander(f"💬 AI-rådgivning för {uploaded_file.name}", expanded=False):
-                ai_feedback = ask_openai(ai_data, industry)
-                st.markdown(ai_feedback)
+    st.divider()
+    st.subheader(":bar_chart: Jämförelsetabell med färgkodning")
+    render_comparison_table(analysis_results)
 
-    if analysis_results:
-        st.markdown("""
-        ## 📊 Jämförelsetabell med färgkodning
-        """)
-        render_comparison_table(analysis_results)
+    st.subheader(":scroll: Sammanställning & Jämförelse")
+    display_pretty_summary(analysis_results)
 
-        st.markdown("""
-        ## 📑 Sammanställning & Jämförelse
-        """)
-        display_pretty_summary(analysis_results)
-
+    st.markdown("### 📥 Exportera resultat")
+    excel_data = export_excel.export_summary_excel(analysis_results)
+    if excel_data:
         st.download_button(
-            "📥 Exportera resultat som Excel",
-            export_excel.export_summary_excel(analysis_results),
-            file_name="forsakringsjamforelse.xlsx")
-
-        st.download_button(
-            "📄 Exportera som PDF",
-            export_pdf.export_summary_pdf(analysis_results),
-            file_name="forsakringsjamforelse.pdf")
-
-        st.download_button(
-            "📝 Exportera som Word",
-            export_word.generate_procurement_word(analysis_results),
-            file_name="upphandlingsunderlag.docx")
+            label="📅 Ladda ner Excel-fil",
+            data=excel_data,
+            file_name="forsakringsanalys.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+else:
+    st.info("📂 Vänligen ladda upp en eller flera försäkrings-PDF:er i sidopanelen för att starta analysen.")

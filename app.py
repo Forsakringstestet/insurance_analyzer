@@ -16,8 +16,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📄 Jämför & Analysera Försäkringsbrev, Offert & Villkor")
-st.caption("AI-driven extraktion & analys av PDF:er inom företagsförsäkring")
+st.title("📄 RiskRadar 360 - Jämför och analysera försäkringsofferter")
+st.caption("Verktyg för Försäkringsförmedlare och företagsförsäkring")
 
 industry = st.sidebar.selectbox("Välj bransch:", [
     "Tillverkning", "Bygg & Entreprenad", "IT & Konsult", "Transport & Logistik", "Handel", "Annan"

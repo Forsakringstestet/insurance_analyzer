@@ -82,15 +82,22 @@ if uploaded_files:
         st.success("1. Inget kostnad för premie eller självrisk.\n\n2. Tydligt produktansvar för industrin.\n\n3. Kan förbättra egendomsskyddet.")
 
     # ----------------- COMPARISON TABLE -----------------
-    st.markdown("<div class='section-title'>📊 Jämförelsetabell</div>", unsafe_allow_html=True)
-    df = pd.DataFrame({
-        "Filnamn": [f.name for f in uploaded_files],
-        "Premie": [15423, 12000],
-        "Maskiner": [700000, 300000],
-        "Transport": [100000, 50000],
-        "Produktansvar": [10000000, 7500000],
+st.markdown("<div class='section-title'>📊 Jämförelsetabell</div>", unsafe_allow_html=True)
+
+# Dynamisk placeholder-tabell med samma längd som antal uppladdade filer
+placeholder_data = []
+for f in uploaded_files:
+    placeholder_data.append({
+        "Filnamn": f.name,
+        "Premie": 0,
+        "Maskiner": 0,
+        "Transport": 0,
+        "Produktansvar": 0
     })
-    st.dataframe(df, use_container_width=True, height=200)
+
+df = pd.DataFrame(placeholder_data)
+st.dataframe(df, use_container_width=True, height=200)
+
 
 # ----------------- LOGOTYPIDÉ -----------------
 st.markdown("""<br><br><center>

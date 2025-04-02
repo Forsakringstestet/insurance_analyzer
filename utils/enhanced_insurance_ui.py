@@ -2,6 +2,21 @@ import streamlit as st
 import pandas as pd
 
 def display_pretty_summary(analysis_results):
+    st.markdown("""
+        <style>
+        .block-container {
+            padding-top: 2rem;
+        }
+        .metric-label {
+            font-weight: bold;
+            color: #004080;
+        }
+        .stMetric .stMarkdown {
+            color: #004080 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.subheader("📑 Sammanfattning")
 
     for result in analysis_results:
@@ -35,3 +50,18 @@ def display_pretty_summary(analysis_results):
             st.divider()
             st.write("📊 Fullständig data:")
             st.json(doc)
+
+
+def configure_sidebar():
+    st.sidebar.markdown("""
+        <style>
+        .sidebar .sidebar-content {
+            background-color: #e6f0ff;
+            color: #003366;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.sidebar.title("🔍 Inställningar")
+    st.sidebar.info("Här kan du ladda upp dokument, justera vikter och se detaljer kring analyser.")
+    st.sidebar.markdown("**Tips:** Välj flera dokument samtidigt för att jämföra.")

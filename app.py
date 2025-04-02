@@ -1,4 +1,4 @@
-import streamlit as st
+""import streamlit as st
 import pandas as pd
 from utils.visualizer import render_comparison_table
 from utils.enhanced_insurance_ui import display_pretty_summary
@@ -13,7 +13,7 @@ st.sidebar.title("🔍 Försäkringsanalysverktyg")
 st.sidebar.info("Ladda upp en eller flera PDF:er med försäkringsinformation för att analysera och jämföra.")
 
 industry = st.sidebar.selectbox("Välj bransch", [
-    "Ingenjörsfirma", "IT-företag", "Tillverkande industri", "Bygg & Entreprenad", "Transport", "Handel", "Annan bransch"])
+    "Ingenjörsfirma", "IT-företag", "Tillverkande industri", "Bygg & Entreprenad", "Transport", "Handel", "Teknisk konsult", "Konsult ABK-09", "Annan bransch"])
 
 st.title("📄 Jämför & Analysera Försäkringsbrev, Offerter & Villkor")
 

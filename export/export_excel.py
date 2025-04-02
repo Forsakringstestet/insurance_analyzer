@@ -1,14 +1,16 @@
 # Export/export_excel.py
 import pandas as pd
-import tempfile
-import streamlit as st
+from io import BytesIO
 
-def export_summary_excel(results: list) -> None:
+def export_summary_excel(results: list) -> BytesIO:
     """
-    Exporterar en sammanställning av analyserade data till Excel.
-    
+    Returnerar en Excel-fil som en BytesIO-ström baserat på försäkringsanalyser.
+
     Args:
         results (list): Lista med dictionaries innehållande 'filename', 'score' och 'data'.
+
+    Returns:
+        BytesIO: En ström som kan användas i st.download_button
     """
     rows = []
     for r in results:
@@ -29,8 +31,10 @@ def export_summary_excel(results: list) -> None:
             "Karens": d.get("karens", "saknas"),
             "Ansvarstid": d.get("ansvarstid", "saknas")
         })
+
     df = pd.DataFrame(rows)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-        df.to_excel(tmp.name, index=False)
-        with open(tmp.name, "rb") as f:
-            st.download_button("📊 Ladda ner Excel", data=f.read(), file_name="forsakringsjämforelse.xlsx")
+    excel_file = BytesIO()
+    with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Sammanställning")
+    excel_file.seek(0)
+    return excel_file

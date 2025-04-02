@@ -2,10 +2,12 @@ import streamlit as st
 import openai
 import json
 
-# GPT-3.5 för AI-rekommendationer baserat på extraherade värden
+# GPT-3.5 för AI-rådgivning baserat på extraherade värden
+
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
 Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
 Analysera ett PDF-dokument som innehåller företagets försäkringspolicy, avtal och övriga relevanta dokument.
@@ -23,6 +25,7 @@ Uteslut analyser av dokumentets struktur eller formella uppbyggnad – din bedö
 2. Ge förbättringsförslag.
 3. Max 3 tydliga punkter på svenska.
 """
+
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -36,19 +39,17 @@ Uteslut analyser av dokumentets struktur eller formella uppbyggnad – din bedö
         return f"[AI-fel] {str(e)}"
 
 
-# GPT-3.5 för AI-driven extraktion av försäkringsdata i JSON-format
+# GPT-3.5 för att extrahera data från ett PDF-dokument
+
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         prompt = f"""
-Du är en försäkringsexpert. Extrahera följande fält ur ett försäkringsdokument i fri text.
-Returnera endast en giltig JSON-struktur (inga kommentarer eller förklaringar).
+Du är en försäkringsexpert. Extrahera följande fält ur ett försäkringsdokument i fri text:
+Returnera endast en giltig JSON enligt nedan. Undvik att skriva något före eller efter JSON.
 
-Om ett värde anges som "0,5 basbelopp", räkna om det till SEK (1 basbelopp = 58 800 SEK).
-
-Struktur:
-{{
+Fält:
   "premie": float,
   "självrisk": float,
   "karens": "text",
@@ -61,9 +62,8 @@ Struktur:
   "varor": float,
   "ansvar": float,
   "gdpr_ansvar": float
-}}
 
-Text att analysera:
+Text:
 {text}
         """
 
@@ -77,14 +77,8 @@ Text att analysera:
 
         content = response.choices[0].message.content.strip()
 
-        # Försök tolka som JSON
         try:
-            data = json.loads(content)
-            if isinstance(data, dict):
-                return data
-            else:
-                st.warning("AI-extraktion misslyckades: JSON var inte ett dictionary-objekt.")
-                return {}
+            return json.loads(content)
         except json.JSONDecodeError:
             st.warning("AI-extraktion misslyckades: Kunde inte tolka JSON")
             return {}

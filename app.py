@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from streamlit_extras.colored_header import colored_header
-from streamlit_extras.let_it_rain import rain
 
 # ----------------- UI STYLING -----------------
 st.set_page_config(
@@ -33,13 +32,12 @@ st.markdown("""
         margin-top: 2rem;
         color: #1e3a8a;
     }
-    .element-container:has(.metric) {
-        background-color: #ffffff;
-        border-radius: 1rem;
-        padding: 1rem;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    .element-container .stMetric {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 1rem !important;
+        padding: 1rem !important;
+        text-align: center !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -70,7 +68,7 @@ uploaded_files = st.file_uploader("", type="pdf", accept_multiple_files=True, la
 
 if uploaded_files:
     for file in uploaded_files:
-        st.markdown(f"### 🧒️ Analys av: {file.name}")
+        st.markdown(f"### 🧾 Analys av: {file.name}")
 
         # Placeholder: Resultat från AI och parser
         st.markdown("#### 📊 Sammanfattning")
@@ -78,9 +76,9 @@ if uploaded_files:
         col1.metric("💰 Premie", "15 423 kr")
         col2.metric("🛠 Maskiner", "700 000 kr")
         col3.metric("🚚 Transport", "100 000 kr")
-        col4.metric("📋 Produktansvar", "10 000 000 kr")
+        col4.metric("🧾 Produktansvar", "10 000 000 kr")
 
-        st.markdown("#### 🧐 AI-rådgivning")
+        st.markdown("#### 🤖 AI-rådgivning")
         st.success("1. Inget kostnad för premie eller självrisk.\n\n2. Tydligt produktansvar för industrin.\n\n3. Kan förbättra egendomsskyddet.")
 
     # ----------------- COMPARISON TABLE -----------------
@@ -93,13 +91,6 @@ if uploaded_files:
         "Produktansvar": [10000000, 7500000],
     })
     st.dataframe(df, use_container_width=True, height=200)
-else:
-    rain(
-        emoji="📄",
-        font_size=25,
-        falling_speed=3,
-        animation_length="infinite"
-    )
 
 # ----------------- LOGOTYPIDÉ -----------------
 st.markdown("""<br><br><center>

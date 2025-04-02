@@ -4,7 +4,7 @@ import os
 from parser import pdf_extractor, pdf_analyzer
 from utils.visualizer import render_comparison_table
 from utils.enhanced_insurance_ui import display_pretty_summary
-from openai_advisor import ask_openai, ask_openai_extract
+from ai.openai_advisor import ask_openai, ask_openai_extract
 from export.export_excel import export_summary_excel
 
 st.set_page_config(page_title="📊 AI Försäkringsanalys & Offertjämförelse", layout="wide")

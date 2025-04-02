@@ -2,96 +2,101 @@ import streamlit as st
 import openai
 import json
 
-# GPT-4 klient
-client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-# ✪ Rådgivning baserat på extraherad försäkringsdata
+# 🔹 GPT-3.5 för AI-rådgivning baserat på extraherade värden
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
+        client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
         prompt = f"""
-Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
-Analysera ett PDF-dokument som innehåller företagets försäkringspolicy, avtal och relevanta uppgifter.
-Ge konkreta och praktiska råd kring försäkringsskyddets omfattning, riskfaktorer och förbättringsförslag.
+Du är en erfaren AI-försäkringsrådgivare med expertis inom företagsförsäkring.
+Din uppgift är att granska ett försäkringsdokument och ge:
+1. För- och nackdelar med nuvarande försäkringsskydd
+2. Praktiska förbättringsförslag
+3. Kort sammanfattning i tre tydliga punkter på svenska
+
+Följande data har extraherats ur dokumentet:
 
 - Bransch: {industry}
-- Premie: {data.get('premie', 'okänd')} kr
-- Självrisk: {data.get('självrisk', 'okänd')}
-- Karens: {data.get('karens', 'okänd')}
-- Ansvarstid: {data.get('ansvarstid', 'okänd')}
-- Maskiner: {data.get('maskiner', 'okänd')} kr
-- Byggnad: {data.get('byggnad', 'okänd')} kr
-- Varor: {data.get('varor', 'okänd')} kr
-- Produktansvar: {data.get('produktansvar', 'okänd')} kr
-- Rättsskydd: {data.get('rättsskydd', 'okänd')} kr
-- GDPR ansvar: {data.get('gdpr_ansvar', 'okänd')} kr
+- Premie: {data.get('premie', 'saknas')} kr
+- Självrisk: {data.get('självrisk', 'saknas')} kr
+- Karens: {data.get('karens', 'saknas')}
+- Ansvarstid: {data.get('ansvarstid', 'saknas')}
+- Maskiner: {data.get('maskiner', 'saknas')} kr
+- Produktansvar: {data.get('produktansvar', 'saknas')} kr
+- Rättsskydd: {data.get('rättsskydd', 'saknas')} kr
+- GDPR-ansvar: {data.get('gdpr_ansvar', 'saknas')} kr
 
-1. Lista fördelar (max 3).
-2. Lista nackdelar (max 3).
-3. Ge förbättringsförslag (max 3) och sammanfatta.
-Svara tydligt på svenska.
+Analysera detta som om du ger rådgivning till ett riktigt företag.
 """
 
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Du är en försäkringsexpert."},
+                {"role": "system", "content": "Du är en expert inom företagsförsäkring och AI-rådgivning."},
                 {"role": "user", "content": prompt}
             ]
         )
+
         return response.choices[0].message.content.strip()
 
     except Exception as e:
-        return f"[AI-fel] {str(e)}"
+        return f"❌ [AI-fel] {str(e)}"
 
-# ✪ AI-driven extraktion av försäkringsdata ur fritext (PDF)
-def ask_openai_extract(text: str) -> dict:
+# 🔹 GPT-3.5-driven strukturell extraktion av nyckelvärden
+def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
-        prompt = f"""
-Texten nedan kommer från ett försäkringsbrev eller offert.
-Extrahera följande värden och returnera ENBART en giltig JSON-struktur exakt enligt exemplet nedan:
+        client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+        extraction_prompt = f"""
+Du ska extrahera nyckeldata från följande försäkringstext. Returnera **endast en giltig JSON-struktur** enligt nedan:
+
+Format:
 {{
-  "premie": 12345,
-  "självrisk": 10000,
-  "karens": "1 dygn",
-  "ansvarstid": "24 månader",
-  "maskiner": 700000,
-  "produktansvar": 1000000,
-  "byggnad": 1000000,
-  "rättsskydd": 300000,
-  "ansvar": 1000000,
-  "varor": 100000,
-  "transport": 100000,
-  "gdpr_ansvar": 500000
+  "premie": float,                   # Belopp i SEK, konvertera från t.ex. "0,5 basbelopp"
+  "självrisk": float,                # Belopp i SEK
+  "karens": "text",                  # T.ex. "1 dygn" eller "saknas"
+  "ansvarstid": "text",              # T.ex. "24 månader" eller "saknas"
+  "maskiner": float,                 # Belopp i SEK
+  "produktansvar": float,            # Belopp i SEK
+  "byggnad": float,                  # Belopp i SEK
+  "varor": float,                    # Belopp i SEK
+  "transport": float,               # Belopp i SEK
+  "ansvar": float,                  # Belopp i SEK
+  "rättsskydd": float,              # Belopp i SEK
+  "gdpr_ansvar": float              # Belopp i SEK
 }}
 
-Text:
+Texten gäller ett företag inom branschen: {industry}
+
+Text att analysera:
 {text}
 """
 
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Du är en expert på att tolka försäkringshandlingar och skapa korrekt JSON."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": "Du är en AI som extraherar strukturerad försäkringsdata från text."},
+                {"role": "user", "content": extraction_prompt}
             ]
         )
 
-        return json.loads(response.choices[0].message.content)
+        # Säker JSON-parsing
+        response_text = response.choices[0].message.content.strip()
+        return json.loads(response_text)
 
     except Exception as e:
         return {
-            "premie": 0,
-            "självrisk": 0,
+            "premie": 0.0,
+            "självrisk": 0.0,
             "karens": "saknas",
             "ansvarstid": "saknas",
-            "maskiner": 0,
-            "produktansvar": 0,
-            "byggnad": 0,
-            "rättsskydd": 0,
-            "ansvar": 0,
-            "varor": 0,
-            "transport": 0,
-            "gdpr_ansvar": 0,
+            "maskiner": 0.0,
+            "produktansvar": 0.0,
+            "byggnad": 0.0,
+            "varor": 0.0,
+            "transport": 0.0,
+            "ansvar": 0.0,
+            "rättsskydd": 0.0,
+            "gdpr_ansvar": 0.0,
             "fel": f"[GPT-fel] {str(e)}"
         }

@@ -36,6 +36,8 @@ industry_options = [
 ]
 selected_industry = st.sidebar.selectbox("Välj bransch för analysen:", industry_options)
 
+sort_option = st.sidebar.radio("Sortera jämförelsetabell efter:", ["Poäng", "Premie", "Självrisk"], index=0)
+
 st.title("Försäkringsanalys med AI")
 st.write("Ladda upp dina försäkringsdokument (PDF) för att få en AI-driven analys, sammanfattning och rekommendationer.")
 
@@ -146,16 +148,25 @@ if all_data:
     rows = []
     for entry in all_data:
         d = entry["data"]
+        prop_sum = sum([d.get(k, 0) for k in ["byggnad", "fastighet", "varor", "maskiner"]])
+        liab_sum = sum([d.get(k, 0) for k in ["produktansvar", "rättsskydd", "gdpr_ansvar", "ansvar"]])
+        skydd_per_krona = (prop_sum + liab_sum) / d.get("premie", 1) if d.get("premie", 1) else 0
         rows.append({
             "Filnamn": entry["filename"],
             "Poäng": entry.get("score", 0),
             "Premie": d.get("premie", 0),
             "Självrisk": d.get("självrisk", 0),
-            "Maskiner": d.get("maskiner", 0),
-            "Transport": d.get("transport", 0),
-            "Produktansvar": d.get("produktansvar", 0),
-            "Ansvar": d.get("ansvar", 0)
+            "Egendomsskydd": prop_sum,
+            "Ansvarsskydd": liab_sum,
+            "Skydd/kr": round(skydd_per_krona, 2),
         })
 
     df = pd.DataFrame(rows)
-    st.dataframe(df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns}), use_container_width=True)
+    df = df.sort_values(by=sort_option, ascending=(sort_option != "Poäng"))
+
+    highlight = df["Poäng"] == df["Poäng"].max()
+    styled_df = df.style.format("{:.0f}", subset=df.select_dtypes("number").columns)
+    styled_df = styled_df.apply(lambda x: ["background-color: #bbf7d0" if v else "" for v in highlight], axis=1)
+    styled_df = styled_df.bar(subset=["Poäng"], color="#93c5fd")
+
+    st.dataframe(styled_df, use_container_width=True)

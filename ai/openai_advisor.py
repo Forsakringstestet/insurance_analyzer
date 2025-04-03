@@ -1,9 +1,9 @@
 import streamlit as st
 import openai
 import json
+import re
 
 # GPT-3.5: AI-försäkringsrådgivning
-
 def ask_openai(data: dict, industry: str = "") -> str:
     try:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -49,22 +49,26 @@ def ask_openai_extract(text: str, industry: str = "") -> dict:
         client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         prompt = f"""
-Du är en försäkringsexpert. Extrahera följande fält ur försäkringsdokumentet nedan. Returnera ENDAST en JSON utan extra text.
+Du är en expert på svenska försäkringsbrev. Extrahera och returnera ENDAST en JSON enligt strukturen nedan. 
 
-Fält:
+✅ Tolka siffror även om de står med "kr", ":-", "basbelopp" (58 800 kr år 2025) eller procent.
+✅ Tolkning ska göras även om siffrorna står i löptext eller olika format.
+✅ Om fältet saknas, returnera 0 för belopp eller "saknas" för text.
+
+Format:
 {{
-  "premie": float,               # SEK
-  "självrisk": float,            # SEK
-  "karens": "text",             # Exempel: "1 dygn"
-  "ansvarstid": "text",         # Exempel: "12 månader"
-  "maskiner": float,             # SEK
-  "produktansvar": float,       # SEK
-  "byggnad": float,             # SEK
-  "rättsskydd": float,         # SEK
-  "transport": float,           # SEK
-  "varor": float,               # SEK
-  "ansvar": float,              # SEK
-  "gdpr_ansvar": float          # SEK
+  "premie": float,
+  "självrisk": float,
+  "karens": "text",
+  "ansvarstid": "text",
+  "maskiner": float,
+  "produktansvar": float,
+  "byggnad": float,
+  "rättsskydd": float,
+  "transport": float,
+  "varor": float,
+  "ansvar": float,
+  "gdpr_ansvar": float
 }}
 
 Text:
@@ -73,20 +77,36 @@ Text:
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
+            temperature=0.2,
             messages=[
-                {"role": "system", "content": "Du är en försäkringsanalytiker."},
+                {"role": "system", "content": "Du är en försäkringsanalytiker som returnerar exakt JSON utan extra text."},
                 {"role": "user", "content": prompt}
             ]
         )
 
         content = response.choices[0].message.content.strip()
 
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            st.warning("AI-extraktion misslyckades: Kunde inte tolka JSON")
-            return {}
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            json_data = json.loads(match.group())
+        else:
+            raise ValueError("Kunde inte hitta korrekt JSON-struktur i svaret.")
+
+        return json_data
 
     except Exception as e:
-        st.warning(f"AI-extraktion misslyckades: [GPT-fel] {str(e)}")
-        return {}
+        st.warning(f"AI-extraktion misslyckades: {e}")
+        return {
+            "premie": 0.0,
+            "självrisk": 0.0,
+            "karens": "saknas",
+            "ansvarstid": "saknas",
+            "maskiner": 0.0,
+            "produktansvar": 0.0,
+            "byggnad": 0.0,
+            "rättsskydd": 0.0,
+            "transport": 0.0,
+            "varor": 0.0,
+            "ansvar": 0.0,
+            "gdpr_ansvar": 0.0
+        }

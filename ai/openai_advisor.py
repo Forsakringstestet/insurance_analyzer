@@ -3,33 +3,49 @@ import openai
 import json
 import re
 
-# GPT-3.5: AI-försäkringsrådgivning
-def ask_openai(data: dict, industry: str = "") -> str:
+# Initiera OpenAI-klientet
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# -----------------------------
+# AI-FÖRSÄKRINGSRÅDGIVNING (GPT-3.5)
+# -----------------------------
+def ask_openai(data: dict, recommendations: dict = None, industry: str = "") -> str:
     try:
-        client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        rec_text = ""
+        if recommendations:
+            rec_text += "\n\nRekommenderade belopp enligt AI:\n"
+            for key, val in recommendations.items():
+                if isinstance(val, (int, float)) and val > 0:
+                    rec_text += f"- {key.capitalize()}: {int(val):,} kr\n"
 
         prompt = f"""
-Du är en avancerad AI-försäkringsrådgivare med djup branschkunskap. Din uppgift är att:
-Analysera ett försäkringsdokument för ett företag inom branschen: {industry}.
+Du är en avancerad försäkringsrådgivare för B2B. Du analyserar skyddsnivån i ett företags försäkring.
 
-Ge konkreta och praktiska råd kring:
-1. Försäkringsskyddets styrkor och svagheter
-2. Riskfaktorer och förbättringsförslag
+Bransch: {industry if industry else "Ej specificerad"}
 
-Data:
+Analysera skyddet baserat på:
 - Premie: {data.get('premie', 'okänd')} kr
 - Självrisk: {data.get('självrisk', 'okänd')} kr
 - Karens: {data.get('karens', 'okänd')}
 - Ansvarstid: {data.get('ansvarstid', 'okänd')}
 - Maskiner: {data.get('maskiner', 'okänd')} kr
 - Produktansvar: {data.get('produktansvar', 'okänd')} kr
-- Ansvar: {data.get('ansvar', 'okänd')} kr
+- GDPR: {data.get('gdpr_ansvar', 'okänd')} kr
+- Rättsskydd: {data.get('rättsskydd', 'okänd')} kr
+- Transport: {data.get('transport', 'okänd')} kr
+{rec_text}
 
-Svar i form av max 3 tydliga punkter på svenska.
+Gör:
+1. Identifiera försäkringsskyddets styrkor och svagheter
+2. Identifiera riskfaktorer och ev. brister
+3. Ge konkreta förbättringsförslag
+
+Max 3 tydliga punkter. Korta svar. Svenska. Inga övriga förklaringar.
 """
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
+            temperature=0.3,
             messages=[
                 {"role": "system", "content": "Du är en försäkringsexpert."},
                 {"role": "user", "content": prompt}
@@ -41,19 +57,18 @@ Svar i form av max 3 tydliga punkter på svenska.
     except Exception as e:
         return f"[AI-fel] {str(e)}"
 
-
-# GPT-3.5: AI-extraktion av fält från text
-
+# -----------------------------
+# AI-EXTRAKTION AV FÖRSÄKRINGSFÄLT (GPT-3.5)
+# -----------------------------
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
-        client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
         prompt = f"""
-Du är en expert på svenska försäkringsbrev. Extrahera och returnera ENDAST en JSON enligt strukturen nedan. 
+Du är expert på svenska försäkringsbrev. Extrahera och returnera ENDAST en JSON enligt detta format.
 
-✅ Tolka siffror även om de står med "kr", ":-", "basbelopp" (58 800 kr år 2025) eller procent.
-✅ Tolkning ska göras även om siffrorna står i löptext eller olika format.
-✅ Om fältet saknas, returnera 0 för belopp eller "saknas" för text.
+OBS:
+- Tolka belopp med "kr", ":-", "basbelopp" (58 800 kr år 2025) eller %.
+- Om fältet saknas: returnera 0 för belopp eller "saknas" för text.
+- Ingen extra förklaring.
 
 Format:
 {{
@@ -77,22 +92,19 @@ Text:
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            temperature=0.2,
+            temperature=0.0,
             messages=[
-                {"role": "system", "content": "Du är en försäkringsanalytiker som returnerar exakt JSON utan extra text."},
+                {"role": "system", "content": "Du är en försäkringsanalytiker som alltid returnerar JSON."},
                 {"role": "user", "content": prompt}
             ]
         )
 
         content = response.choices[0].message.content.strip()
-
-        match = re.search(r"\{.*\}", content, re.DOTALL)
-        if match:
-            json_data = json.loads(match.group())
+        json_match = re.search(r"\{.*\}", content, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
         else:
-            raise ValueError("Kunde inte hitta korrekt JSON-struktur i svaret.")
-
-        return json_data
+            raise ValueError("JSON-struktur kunde inte identifieras.")
 
     except Exception as e:
         st.warning(f"AI-extraktion misslyckades: {e}")

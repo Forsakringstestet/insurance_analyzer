@@ -3,7 +3,7 @@ import openai
 import json
 import re
 
-# Initiera OpenAI-klientet
+# Initiera OpenAI-klienten
 client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # -----------------------------
@@ -57,8 +57,9 @@ Max 3 tydliga punkter. Korta svar. Svenska. Inga övriga förklaringar.
     except Exception as e:
         return f"[AI-fel] {str(e)}"
 
+
 # -----------------------------
-# AI-EXTRAKTION AV FÖRSÄKRINGSFÄLT (GPT-3.5)
+# AI-EXTRAKTION AV FÖRSÄKRINGSFÄLT OCH SJÄLVRISKER (GPT-3.5)
 # -----------------------------
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
@@ -66,9 +67,9 @@ def ask_openai_extract(text: str, industry: str = "") -> dict:
 Du är expert på svenska försäkringsbrev. Extrahera och returnera ENDAST en JSON enligt detta format.
 
 OBS:
-- Tolka belopp med "kr", ":-", "basbelopp" (58 800 kr år 2025) eller %.
-- Om fältet saknas: returnera 0 för belopp eller "saknas" för text.
-- Ingen extra förklaring.
+- Tolka belopp med \"kr\", \" basbelopp\", \"%\" eller \":-\".
+- Returnera självrisker per moment där det finns, annars ignorera.
+- Ingen förklaring eller extra text.
 
 Format:
 {{
@@ -83,7 +84,12 @@ Format:
   "transport": float,
   "varor": float,
   "ansvar": float,
-  "gdpr_ansvar": float
+  "gdpr_ansvar": float,
+  "deductibles": {{
+    "produktansvar": "text", 
+    "rättsskydd": "text", 
+    "maskiner": "text"
+  }}
 }}
 
 Text:
@@ -92,9 +98,9 @@ Text:
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            temperature=0.0,
+            temperature=0.2,
             messages=[
-                {"role": "system", "content": "Du är en försäkringsanalytiker som alltid returnerar JSON."},
+                {"role": "system", "content": "Du är en försäkringsanalytiker som alltid returnerar exakt JSON."},
                 {"role": "user", "content": prompt}
             ]
         )
@@ -120,5 +126,6 @@ Text:
             "transport": 0.0,
             "varor": 0.0,
             "ansvar": 0.0,
-            "gdpr_ansvar": 0.0
+            "gdpr_ansvar": 0.0,
+            "deductibles": {}
         }

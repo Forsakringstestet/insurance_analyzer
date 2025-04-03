@@ -5,7 +5,7 @@ import re
 # Imports
 from parser.pdf_extractor import extract_text_from_pdf
 from parser.pdf_analyzer import extract_all_insurance_data  # fallback
-from scoring import score_document
+from parser.scoring import score_document
 from ai.openai_advisor import ask_openai_extract, ask_openai
 from ai.recommender import generate_recommendation
 from export.export_excel import export_summary_excel

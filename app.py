@@ -146,4 +146,5 @@ if all_data:
         })
 
     df = pd.DataFrame(rows)
-    st.dataframe(df.style.format("{:.0f}"), use_container_width=True)
+    st.dataframe(df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns}), use_container_width=True)
+

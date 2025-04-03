@@ -59,17 +59,17 @@ Max 3 tydliga punkter. Korta svar. Svenska. Inga övriga förklaringar.
 
 
 # -----------------------------
-# AI-EXTRAKTION AV FÖRSÄKRINGSFÄLT OCH SJÄLVRISKER (GPT-3.5)
+# AI-EXTRAKTION AV FÖRSÄKRINGSFÄLT & DEDUCTIBLES (GPT-3.5)
 # -----------------------------
 def ask_openai_extract(text: str, industry: str = "") -> dict:
     try:
         prompt = f"""
-Du är expert på svenska försäkringsbrev. Extrahera och returnera ENDAST en JSON enligt detta format.
+Du är expert på svenska försäkringsbrev. Extrahera ENDAST en giltig JSON enligt formatet nedan.
 
-OBS:
-- Tolka belopp med \"kr\", \" basbelopp\", \"%\" eller \":-\".
-- Returnera självrisker per moment där det finns, annars ignorera.
-- Ingen förklaring eller extra text.
+Regler:
+- Tolka belopp med "kr", "%", "basbelopp", ":-" etc.
+- Extrahera självrisker för varje moment där det anges.
+- Returnera 0 om data saknas, "saknas" för text. Inga extra kommentarer.
 
 Format:
 {{
@@ -86,9 +86,10 @@ Format:
   "ansvar": float,
   "gdpr_ansvar": float,
   "deductibles": {{
-    "produktansvar": "text", 
-    "rättsskydd": "text", 
-    "maskiner": "text"
+    "maskiner": "text",
+    "produktansvar": "text",
+    "rättsskydd": "text",
+    "gdpr_ansvar": "text"
   }}
 }}
 
@@ -106,11 +107,11 @@ Text:
         )
 
         content = response.choices[0].message.content.strip()
-        json_match = re.search(r"\{.*\}", content, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group())
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            return json.loads(match.group())
         else:
-            raise ValueError("JSON-struktur kunde inte identifieras.")
+            raise ValueError("JSON-struktur kunde inte tolkas.")
 
     except Exception as e:
         st.warning(f"AI-extraktion misslyckades: {e}")

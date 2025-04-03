@@ -11,11 +11,24 @@ from ai.recommender import generate_recommendation
 from export.export_excel import export_summary_excel
 from export.export_pdf import export_summary_pdf
 
-# Page setup
+# ----------- Ny funktion: visa detaljerat skydd och självrisk -----------
+def format_detailed_insurance_section(header_icon, header_text, sections: dict, deductibles: dict = None):
+    st.markdown(f"### {header_icon} {header_text}")
+    for key, value in sections.items():
+        label = key.replace("_", " ").capitalize()
+        amount = f"{int(value):,} kr".replace(",", " ")
+        if deductibles and key in deductibles:
+            srk = deductibles[key]
+            srk_str = srk if isinstance(srk, str) else f"{int(srk):,} kr".replace(",", " ")
+            st.markdown(f"- **{label}:** {amount} _(Självrisk: {srk_str})_")
+        else:
+            st.markdown(f"- **{label}:** {amount}")
+
+# ----------- Page setup -----------
 st.set_page_config(page_title="Försäkringsanalys", page_icon="🛡️", layout="wide")
 ACCENT_COLOR = "#2563EB"
 
-# Sidebar
+# ----------- Sidebar -----------
 st.sidebar.header("Inställningar")
 industry_options = [
     "Ej valt", "Handel", "Industri", "IT", "Bygg", "Transport",
@@ -26,7 +39,7 @@ selected_industry = st.sidebar.selectbox("Välj bransch för analysen:", industr
 st.title("Försäkringsanalys med AI")
 st.write("Ladda upp dina försäkringsdokument (PDF) för att få en AI-driven analys, sammanfattning och rekommendationer.")
 
-# File upload
+# ----------- File upload -----------
 uploaded_files = st.file_uploader(
     "📄 Välj en eller flera PDF-filer att analysera", type=["pdf"], accept_multiple_files=True
 )
@@ -74,7 +87,6 @@ if uploaded_files:
             except:
                 data[key] = 0.0
 
-        # Ansvarstid
         if not str(data.get("ansvarstid", "")).strip():
             data["ansvarstid"] = "saknas"
 
@@ -86,35 +98,35 @@ if uploaded_files:
 
         all_data.append({"filename": file.name, "data": data, "score": score})
 
-        # Sammanfattning
+        # ----------- Sammanfattning -----------
         st.subheader("📋 Sammanfattning")
-        st.markdown(f"**\u00c5rspremie:** {int(data.get('premie', 0)):,} kr".replace(",", " "))
+        st.markdown(f"**Årspremie:** {int(data.get('premie', 0)):,} kr".replace(",", " "))
         st.markdown(f"**Självrisk:** {int(data.get('självrisk', 0)):,} kr".replace(",", " "))
         st.markdown(f"**Ansvarstid:** {data.get('ansvarstid', 'saknas')}")
+
+        deductibles = data.get("deductibles", {})
 
         prop_fields = ["byggnad", "fastighet", "varor", "maskiner"]
         prop_vals = {k: data[k] for k in prop_fields if data.get(k, 0) > 0}
         if prop_vals:
-            total = sum(prop_vals.values())
-            detail = ", ".join([f"{k.capitalize()}: {int(v):,} kr".replace(",", " ") for k, v in prop_vals.items()])
-            st.markdown(f"**Egendomsskydd:** {int(total):,} kr".replace(",", " ") + f" _(fördelat på {detail})_")
+            format_detailed_insurance_section("🏗️", "Egendomsskydd", prop_vals, deductibles)
 
         liab_fields = ["produktansvar", "rättsskydd", "gdpr_ansvar"]
         liab_vals = {k: data[k] for k in liab_fields if data.get(k, 0) > 0}
         if liab_vals:
-            st.markdown("**Ansvarsskydd:** " + ", ".join([f"{k.capitalize()}: {int(v):,} kr".replace(",", " ") for k, v in liab_vals.items()]))
+            format_detailed_insurance_section("🛡️", "Ansvarsskydd", liab_vals, deductibles)
 
         st.markdown(f"**Poäng:** {score} / 100")
 
         # Export
         try:
             excel_bytes = export_summary_excel(data)
-            st.download_button("📥 Ladda ner sammanfattning (Excel)", data=excel_bytes, file_name=f"Sammanfattning_{file.name}.xlsx")
+            st.download_button("📅 Ladda ner sammanfattning (Excel)", data=excel_bytes, file_name=f"Sammanfattning_{file.name}.xlsx")
         except:
             pass
         try:
             pdf_bytes = export_summary_pdf(data)
-            st.download_button("📥 Ladda ner sammanfattning (PDF)", data=pdf_bytes, file_name=f"Sammanfattning_{file.name}.pdf")
+            st.download_button("📅 Ladda ner sammanfattning (PDF)", data=pdf_bytes, file_name=f"Sammanfattning_{file.name}.pdf")
         except:
             pass
 
@@ -127,7 +139,7 @@ if uploaded_files:
         except Exception as e:
             st.warning(f"⚠️ Kunde inte generera AI-råd: {e}")
 
-# Jämförelsetabell
+# ----------- Jämförelsetabell -----------
 if all_data:
     st.markdown("---")
     st.subheader("📊 Jämförelsetabell")
@@ -147,4 +159,3 @@ if all_data:
 
     df = pd.DataFrame(rows)
     st.dataframe(df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns}), use_container_width=True)
-

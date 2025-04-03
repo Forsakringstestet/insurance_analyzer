@@ -35,7 +35,11 @@ def score_document(data: dict, industry: str = "", weights: dict = DEFAULT_WEIGH
         sjalvrisk_score = 1.0 - normalize(data.get("självrisk", 0), MAX_VALUES["självrisk"])
 
         # Omfattning: ju större skydd desto högre poäng
-        omfattning_keys = ["maskiner", "produktansvar", "ansvar", "byggnad", "varor", "transport", "rättsskydd", "gdpr_ansvar"]
+        omfattning_keys = [
+            "maskiner", "produktansvar", "ansvar",
+            "byggnad", "varor", "transport",
+            "rättsskydd", "gdpr_ansvar"
+        ]
         omfattning_score = sum([
             normalize(data.get(k, 0), MAX_VALUES.get(k, 1))
             for k in omfattning_keys
@@ -43,14 +47,19 @@ def score_document(data: dict, industry: str = "", weights: dict = DEFAULT_WEIGH
 
         # Branschspecifik bonus
         bonus = 0.0
-        if industry.lower() == "it":
+        industry = industry.lower()
+        if industry == "it":
             bonus += normalize(data.get("gdpr_ansvar", 0), MAX_VALUES["gdpr_ansvar"])
-        elif industry.lower() in ["bygg", "entreprenad"]:
+        elif industry in ["bygg", "entreprenad"]:
             bonus += 1.0 if data.get("självrisk", 0) < 10000 else 0.0
-        elif industry.lower() in ["handel"]:
+        elif industry == "handel":
             bonus += normalize(data.get("varor", 0), MAX_VALUES["varor"])
-        elif industry.lower() in ["transport"]:
+        elif industry == "transport":
             bonus += normalize(data.get("transport", 0), MAX_VALUES["transport"])
+        elif industry == "konsult":
+            bonus += normalize(data.get("rättsskydd", 0), MAX_VALUES["rättsskydd"])
+        elif industry == "offentlig sektor":
+            bonus += normalize(data.get("produktansvar", 0), MAX_VALUES["produktansvar"])
 
         # Total viktad poäng 0-100
         total_score = (

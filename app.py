@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+from streamlit.components.v1 import html
 
 # Imports
 from parser.pdf_extractor import extract_text_from_pdf
@@ -36,8 +37,6 @@ industry_options = [
 ]
 selected_industry = st.sidebar.selectbox("Välj bransch för analysen:", industry_options)
 
-sort_option = st.sidebar.radio("Sortera jämförelsetabell efter:", ["Poäng", "Premie", "Självrisk"], index=0)
-
 st.title("Försäkringsanalys med AI")
 st.write("Ladda upp dina försäkringsdokument (PDF) för att få en AI-driven analys, sammanfattning och rekommendationer.")
 
@@ -62,7 +61,6 @@ if uploaded_files:
             st.warning(f"⚠️ Ingen text hittades i *{file.name}*. Hoppar över.")
             continue
 
-        # AI-extraktion eller fallback till parser
         try:
             data = ask_openai_extract(raw_text, selected_industry)
             if not isinstance(data, dict) or not data:
@@ -71,7 +69,6 @@ if uploaded_files:
             st.warning(f"⚠️ AI-extraktion misslyckades ({e}), använder fallback-parser.")
             data = extract_all_insurance_data(raw_text)
 
-        # Konvertera numeriska fält
         numeric_fields = [
             "premie", "självrisk", "byggnad", "fastighet", "varor", "maskiner",
             "produktansvar", "rättsskydd", "gdpr_ansvar", "transport"
@@ -92,7 +89,6 @@ if uploaded_files:
         if not str(data.get("ansvarstid", "")).strip():
             data["ansvarstid"] = "saknas"
 
-        # Scoring
         try:
             score = score_document(data, industry=selected_industry)
         except:
@@ -100,7 +96,6 @@ if uploaded_files:
 
         all_data.append({"filename": file.name, "data": data, "score": score})
 
-        # ----------- Sammanfattning -----------
         st.subheader("📋 Sammanfattning")
         st.markdown(f"**Årspremie:** {int(data.get('premie', 0)):,} kr".replace(",", " "))
         st.markdown(f"**Självrisk:** {int(data.get('självrisk', 0)):,} kr".replace(",", " "))
@@ -120,7 +115,6 @@ if uploaded_files:
 
         st.markdown(f"**Poäng:** {score} / 100")
 
-        # Export
         try:
             excel_bytes = export_summary_excel(data)
             st.download_button("📅 Ladda ner sammanfattning (Excel)", data=excel_bytes, file_name=f"Sammanfattning_{file.name}.xlsx")
@@ -132,7 +126,6 @@ if uploaded_files:
         except:
             pass
 
-        # AI-rådgivning
         st.subheader("💡 AI-rådgivning")
         try:
             recs = generate_recommendation(data, selected_industry)
@@ -148,25 +141,21 @@ if all_data:
     rows = []
     for entry in all_data:
         d = entry["data"]
-        prop_sum = sum([d.get(k, 0) for k in ["byggnad", "fastighet", "varor", "maskiner"]])
-        liab_sum = sum([d.get(k, 0) for k in ["produktansvar", "rättsskydd", "gdpr_ansvar", "ansvar"]])
-        skydd_per_krona = (prop_sum + liab_sum) / d.get("premie", 1) if d.get("premie", 1) else 0
         rows.append({
             "Filnamn": entry["filename"],
             "Poäng": entry.get("score", 0),
             "Premie": d.get("premie", 0),
             "Självrisk": d.get("självrisk", 0),
-            "Egendomsskydd": prop_sum,
-            "Ansvarsskydd": liab_sum,
-            "Skydd/kr": round(skydd_per_krona, 2),
+            "Maskiner": d.get("maskiner", 0),
+            "Transport": d.get("transport", 0),
+            "Produktansvar": d.get("produktansvar", 0),
+            "Ansvar": d.get("ansvar", 0)
         })
 
     df = pd.DataFrame(rows)
-    df = df.sort_values(by=sort_option, ascending=(sort_option != "Poäng"))
-
-    highlight = df["Poäng"] == df["Poäng"].max()
-    styled_df = df.style.format("{:.0f}", subset=df.select_dtypes("number").columns)
-    styled_df = styled_df.apply(lambda x: ["background-color: #bbf7d0" if v else "" for v in highlight], axis=1)
-    styled_df = styled_df.bar(subset=["Poäng"], color="#93c5fd")
-
-    st.dataframe(styled_df, use_container_width=True)
+    try:
+        styled_df = df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns})
+        html_code = styled_df.to_html()
+        html(f"<div style='overflow:auto'>{html_code}</div>", height=400)
+    except:
+        st.dataframe(df, use_container_width=True)

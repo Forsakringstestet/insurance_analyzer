@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import re
-from streamlit.components.v1 import html
 
 # Imports
 from parser.pdf_extractor import extract_text_from_pdf
@@ -61,6 +60,7 @@ if uploaded_files:
             st.warning(f"⚠️ Ingen text hittades i *{file.name}*. Hoppar över.")
             continue
 
+        # AI-extraktion eller fallback till parser
         try:
             data = ask_openai_extract(raw_text, selected_industry)
             if not isinstance(data, dict) or not data:
@@ -69,6 +69,7 @@ if uploaded_files:
             st.warning(f"⚠️ AI-extraktion misslyckades ({e}), använder fallback-parser.")
             data = extract_all_insurance_data(raw_text)
 
+        # Konvertera numeriska fält
         numeric_fields = [
             "premie", "självrisk", "byggnad", "fastighet", "varor", "maskiner",
             "produktansvar", "rättsskydd", "gdpr_ansvar", "transport"
@@ -89,6 +90,7 @@ if uploaded_files:
         if not str(data.get("ansvarstid", "")).strip():
             data["ansvarstid"] = "saknas"
 
+        # Scoring
         try:
             score = score_document(data, industry=selected_industry)
         except:
@@ -96,6 +98,7 @@ if uploaded_files:
 
         all_data.append({"filename": file.name, "data": data, "score": score})
 
+        # ----------- Sammanfattning -----------
         st.subheader("📋 Sammanfattning")
         st.markdown(f"**Årspremie:** {int(data.get('premie', 0)):,} kr".replace(",", " "))
         st.markdown(f"**Självrisk:** {int(data.get('självrisk', 0)):,} kr".replace(",", " "))
@@ -115,6 +118,7 @@ if uploaded_files:
 
         st.markdown(f"**Poäng:** {score} / 100")
 
+        # Export
         try:
             excel_bytes = export_summary_excel(data)
             st.download_button("📅 Ladda ner sammanfattning (Excel)", data=excel_bytes, file_name=f"Sammanfattning_{file.name}.xlsx")
@@ -126,6 +130,7 @@ if uploaded_files:
         except:
             pass
 
+        # AI-rådgivning
         st.subheader("💡 AI-rådgivning")
         try:
             recs = generate_recommendation(data, selected_industry)
@@ -138,24 +143,27 @@ if uploaded_files:
 if all_data:
     st.markdown("---")
     st.subheader("📊 Jämförelsetabell")
-    rows = []
-    for entry in all_data:
-        d = entry["data"]
-        rows.append({
-            "Filnamn": entry["filename"],
-            "Poäng": entry.get("score", 0),
-            "Premie": d.get("premie", 0),
-            "Självrisk": d.get("självrisk", 0),
-            "Maskiner": d.get("maskiner", 0),
-            "Transport": d.get("transport", 0),
-            "Produktansvar": d.get("produktansvar", 0),
-            "Ansvar": d.get("ansvar", 0)
-        })
 
-    df = pd.DataFrame(rows)
-    try:
-        styled_df = df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns})
-        html_code = styled_df.to_html()
-        html(f"<div style='overflow:auto'>{html_code}</div>", height=400)
-    except:
-        st.dataframe(df, use_container_width=True)
+    df = pd.DataFrame([{
+        "Filnamn": entry["filename"],
+        "Poäng": entry["score"],
+        "Premie": entry["data"].get("premie", 0),
+        "Självrisk": entry["data"].get("självrisk", 0),
+        "Maskiner": entry["data"].get("maskiner", 0),
+        "Transport": entry["data"].get("transport", 0),
+        "Produktansvar": entry["data"].get("produktansvar", 0),
+        "Ansvar": entry["data"].get("ansvar", 0),
+    } for entry in all_data])
+
+    def highlight_best(s):
+        if s.name != "Poäng":
+            return ["" for _ in s]
+        max_val = s.max()
+        return ["background-color: #D1FAE5; font-weight: bold" if v == max_val else "" for v in s]
+
+    styled_df = df.style.format({col: "{:.0f}" for col in df.select_dtypes(include="number").columns})
+    styled_df = styled_df.set_table_styles([
+        {"selector": "th", "props": [("background-color", ACCENT_COLOR), ("color", "white"), ("font-weight", "bold")]}])
+    styled_df = styled_df.apply(highlight_best)
+
+    st.dataframe(styled_df, use_container_width=True)

@@ -4,14 +4,14 @@ import re
 
 # Imports
 from parser.pdf_extractor import extract_text_from_pdf
-from parser.pdf_analyzer import extract_all_insurance_data  # fallback
+from parser.pdf_analyzer import extract_all_insurance_data
 from parser.scoring import score_document
 from ai.openai_advisor import ask_openai_extract, ask_openai
 from ai.recommender import generate_recommendation
 from export.export_excel import export_summary_excel
 from export.export_pdf import export_summary_pdf
 
-# ----------- Ny funktion: visa detaljerat skydd och självrisk -----------
+# ----------- Funktion: Detaljerat skydd + självrisk -----------
 def format_detailed_insurance_section(header_icon, header_text, sections: dict, deductibles: dict = None):
     st.markdown(f"### {header_icon} {header_text}")
     for key, value in sections.items():
@@ -35,7 +35,9 @@ industry_options = [
     "Konsult", "Fastighet", "Offentlig sektor", "Annat"
 ]
 selected_industry = st.sidebar.selectbox("Välj bransch för analysen:", industry_options)
+poang_filter = st.sidebar.slider("Filtrera efter minsta poäng:", 0, 100, 0)
 
+# ----------- Titel -----------
 st.title("Försäkringsanalys med AI")
 st.write("Ladda upp dina försäkringsdokument (PDF) för att få en AI-driven analys, sammanfattning och rekommendationer.")
 
@@ -60,7 +62,6 @@ if uploaded_files:
             st.warning(f"⚠️ Ingen text hittades i *{file.name}*. Hoppar över.")
             continue
 
-        # AI-extraktion eller fallback till parser
         try:
             data = ask_openai_extract(raw_text, selected_industry)
             if not isinstance(data, dict) or not data:
@@ -118,17 +119,14 @@ if uploaded_files:
 
         st.markdown(f"**Poäng:** {score} / 100")
 
-        # Export
         try:
             excel_bytes = export_summary_excel(data)
             st.download_button("📅 Ladda ner sammanfattning (Excel)", data=excel_bytes, file_name=f"Sammanfattning_{file.name}.xlsx")
-        except:
-            pass
+        except: pass
         try:
             pdf_bytes = export_summary_pdf(data)
             st.download_button("📅 Ladda ner sammanfattning (PDF)", data=pdf_bytes, file_name=f"Sammanfattning_{file.name}.pdf")
-        except:
-            pass
+        except: pass
 
         # AI-rådgivning
         st.subheader("💡 AI-rådgivning")
@@ -145,19 +143,18 @@ if all_data:
     st.subheader("📊 Jämförelsetabell")
 
     df = pd.DataFrame([{
-        "Filnamn": entry["filename"],
-        "Poäng": entry["score"],
-        "Premie": entry["data"].get("premie", 0),
-        "Självrisk": entry["data"].get("självrisk", 0),
-        "Maskiner": entry["data"].get("maskiner", 0),
-        "Transport": entry["data"].get("transport", 0),
-        "Produktansvar": entry["data"].get("produktansvar", 0),
-        "Ansvar": entry["data"].get("ansvar", 0),
-    } for entry in all_data])
+        "Filnamn": d["filename"],
+        "Poäng": d["score"],
+        "Premie": d["data"].get("premie", 0),
+        "Självrisk": d["data"].get("självrisk", 0),
+        "Maskiner": d["data"].get("maskiner", 0),
+        "Transport": d["data"].get("transport", 0),
+        "Produktansvar": d["data"].get("produktansvar", 0),
+        "Ansvar": d["data"].get("ansvar", 0),
+    } for d in all_data if d["score"] >= poang_filter])
 
     def highlight_best(s):
-        if s.name != "Poäng":
-            return ["" for _ in s]
+        if s.name != "Poäng": return ["" for _ in s]
         max_val = s.max()
         return ["background-color: #D1FAE5; font-weight: bold" if v == max_val else "" for v in s]
 
